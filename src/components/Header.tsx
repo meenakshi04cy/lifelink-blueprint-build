@@ -24,12 +24,6 @@ export const Header = () => {
             <Link to="/about" className="text-foreground hover:text-primary transition-colors">
               About
             </Link>
-            <Link to="/request-blood" className="text-foreground hover:text-primary transition-colors">
-              Request Blood
-            </Link>
-            <Link to="/become-donor" className="text-foreground hover:text-primary transition-colors">
-              Become a Donor
-            </Link>
             <Link to="/login">
               <Button variant="outline">Login</Button>
             </Link>
@@ -63,20 +57,6 @@ export const Header = () => {
               onClick={() => setIsMenuOpen(false)}
             >
               About
-            </Link>
-            <Link
-              to="/request-blood"
-              className="text-foreground hover:text-primary transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Request Blood
-            </Link>
-            <Link
-              to="/become-donor"
-              className="text-foreground hover:text-primary transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Become a Donor
             </Link>
             <Link to="/login" onClick={() => setIsMenuOpen(false)}>
               <Button variant="outline" className="w-full">Login</Button>

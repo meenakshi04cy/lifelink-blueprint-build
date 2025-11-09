@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 import { Heart, Award, Users } from "lucide-react";
 
 export const ForDonors = () => {
@@ -69,9 +70,11 @@ export const ForDonors = () => {
               </ul>
             </div>
 
-            <Button variant="hero" size="lg">
-              Register as Donor
-            </Button>
+            <Link to="/become-donor">
+              <Button variant="hero" size="lg">
+                Register as Donor
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

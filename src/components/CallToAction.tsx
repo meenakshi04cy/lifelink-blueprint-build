@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Heart } from "lucide-react";
 import iconBloodHeart from "@/assets/icon-blood-heart.jpg";
 
@@ -23,20 +24,24 @@ export const CallToAction = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="bg-background text-primary hover:bg-background/90 hover:scale-105 transition-all text-lg font-semibold"
-            >
-              <Heart className="w-5 h-5" />
-              Get Started Now
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="border-2 border-primary-foreground bg-transparent text-primary-foreground hover:bg-primary-foreground hover:text-primary text-lg font-semibold"
-            >
-              Learn More
-            </Button>
+            <Link to="/signup">
+              <Button 
+                size="lg" 
+                className="bg-background text-primary hover:bg-background/90 hover:scale-105 transition-all text-lg font-semibold"
+              >
+                <Heart className="w-5 h-5" />
+                Get Started Now
+              </Button>
+            </Link>
+            <Link to="/about">
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-2 border-primary-foreground bg-transparent text-primary-foreground hover:bg-primary-foreground hover:text-primary text-lg font-semibold"
+              >
+                Learn More
+              </Button>
+            </Link>
           </div>
 
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">

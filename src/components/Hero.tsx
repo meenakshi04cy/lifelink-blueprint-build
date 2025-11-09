@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Heart, Droplets } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-blood-donation.jpg";
 
 export const Hero = () => {
@@ -35,14 +36,18 @@ export const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button variant="hero" size="lg" className="text-lg">
-              <Droplets className="w-5 h-5" />
-              Request Blood
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg">
-              <Heart className="w-5 h-5" />
-              Become a Donor
-            </Button>
+            <Link to="/request-blood">
+              <Button variant="hero" size="lg" className="text-lg">
+                <Droplets className="w-5 h-5" />
+                Request Blood
+              </Button>
+            </Link>
+            <Link to="/become-donor">
+              <Button variant="outline" size="lg" className="text-lg">
+                <Heart className="w-5 h-5" />
+                Become a Donor
+              </Button>
+            </Link>
           </div>
 
           <div className="mt-12 grid grid-cols-3 gap-8">

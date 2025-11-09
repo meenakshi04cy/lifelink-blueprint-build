@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 import { Droplets, Clock, CheckCircle } from "lucide-react";
 
 export const ForRecipients = () => {
@@ -47,9 +48,11 @@ export const ForRecipients = () => {
               </div>
             </div>
 
-            <Button variant="hero" size="lg">
-              Submit Blood Request
-            </Button>
+            <Link to="/request-blood">
+              <Button variant="hero" size="lg">
+                Submit Blood Request
+              </Button>
+            </Link>
           </div>
 
           <div className="grid gap-4">
