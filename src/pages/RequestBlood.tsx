@@ -163,64 +163,59 @@ const RequestBlood = () => {
             </CardContent>
           </Card>
 
+          {/* Donor Benefits & Features — replaces previous "Manage Your Requests" cards but keeps existing routes */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-center mb-8">Manage Your Requests</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <Link to="/update-request-status">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <Calendar className="w-6 h-6 text-primary" />
+            <h2 className="text-2xl font-bold text-center mb-8">Donor Benefits & Features</h2>
+            <div className="max-w-6xl mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Link to="/update-request-status" className="block">
+                  <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transform hover:-translate-y-1 transition-all p-6 h-full">
+                    <div className="w-12 h-12 rounded-md bg-red-50 flex items-center justify-center mb-4">
+                      <Calendar className="w-6 h-6 text-red-600" />
                     </div>
-                    <CardTitle>Update Request Status</CardTitle>
-                    <CardDescription>
+                    <h3 className="text-lg font-semibold text-black mb-2">Update Request Status</h3>
+                    <p className="text-sm text-gray-500">
                       Keep your blood request updated to help donors respond effectively
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
+                    </p>
+                  </div>
+                </Link>
 
-              <Link to="/requestor-visibility">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <Eye className="w-6 h-6 text-primary" />
+                <Link to="/requestor-visibility" className="block">
+                  <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transform hover:-translate-y-1 transition-all p-6 h-full">
+                    <div className="w-12 h-12 rounded-md bg-red-50 flex items-center justify-center mb-4">
+                      <Eye className="w-6 h-6 text-red-600" />
                     </div>
-                    <CardTitle>Stay Visible</CardTitle>
-                    <CardDescription>
-                      Control who can see and respond to your blood requests
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
+                    <h3 className="text-lg font-semibold text-black mb-2">Stay Visible</h3>
+                    <p className="text-sm text-gray-500">
+                       Control who can see and respond to your blood requests
+                    </p>
+                  </div>
+                </Link>
 
-              <Link to="/nearby-donations">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <MapPin className="w-6 h-6 text-primary" />
+                <Link to="/nearby-donations" className="block">
+                  <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transform hover:-translate-y-1 transition-all p-6 h-full">
+                    <div className="w-12 h-12 rounded-md bg-red-50 flex items-center justify-center mb-4">
+                      <MapPin className="w-6 h-6 text-red-600" />
                     </div>
-                    <CardTitle>View Nearby Donations</CardTitle>
-                    <CardDescription>
+                    <h3 className="text-lg font-semibold text-black mb-2">View Nearby Donations</h3>
+                    <p className="text-sm text-gray-500">
                       Find and connect with available blood donors near your location
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
+                    </p>
+                  </div>
+                </Link>
 
-              <Link to="/request-history">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <History className="w-6 h-6 text-primary" />
+                <Link to="/request-history" className="block">
+                  <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transform hover:-translate-y-1 transition-all p-6 h-full">
+                    <div className="w-12 h-12 rounded-md bg-red-50 flex items-center justify-center mb-4">
+                      <History className="w-6 h-6 text-red-600" />
                     </div>
-                    <CardTitle>Track Request History</CardTitle>
-                    <CardDescription>
+                    <h3 className="text-lg font-semibold text-black mb-2">Track Request History</h3>
+                    <p className="text-sm text-gray-500">
                       Keep a record of all your requests and their outcomes
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
+                    </p>
+                  </div>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
