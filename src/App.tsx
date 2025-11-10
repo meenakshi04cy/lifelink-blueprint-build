@@ -13,6 +13,10 @@ import UpdateAvailability from "./pages/UpdateAvailability";
 import DonorVisibility from "./pages/DonorVisibility";
 import NearbyRequests from "./pages/NearbyRequests";
 import DonationHistory from "./pages/DonationHistory";
+import UpdateRequestStatus from "./pages/UpdateRequestStatus";
+import RequestorVisibility from "./pages/RequestorVisibility";
+import NearbyDonations from "./pages/NearbyDonations";
+import RequestHistory from "./pages/RequestHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +38,10 @@ const App = () => (
           <Route path="/donor-visibility" element={<DonorVisibility />} />
           <Route path="/nearby-requests" element={<NearbyRequests />} />
           <Route path="/donation-history" element={<DonationHistory />} />
+          <Route path="/update-request-status" element={<UpdateRequestStatus />} />
+          <Route path="/requestor-visibility" element={<RequestorVisibility />} />
+          <Route path="/nearby-donations" element={<NearbyDonations />} />
+          <Route path="/request-history" element={<RequestHistory />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

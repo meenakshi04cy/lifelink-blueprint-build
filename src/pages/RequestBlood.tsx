@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Calendar, Eye, MapPin, History } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const RequestBlood = () => {
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,6 +162,67 @@ const RequestBlood = () => {
               </form>
             </CardContent>
           </Card>
+
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-center mb-8">Manage Your Requests</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              <Link to="/update-request-status">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <Calendar className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle>Update Request Status</CardTitle>
+                    <CardDescription>
+                      Keep your blood request updated to help donors respond effectively
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+
+              <Link to="/requestor-visibility">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <Eye className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle>Stay Visible</CardTitle>
+                    <CardDescription>
+                      Control who can see and respond to your blood requests
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+
+              <Link to="/nearby-donations">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <MapPin className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle>View Nearby Donations</CardTitle>
+                    <CardDescription>
+                      Find and connect with available blood donors near your location
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+
+              <Link to="/request-history">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <History className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle>Track Request History</CardTitle>
+                    <CardDescription>
+                      Keep a record of all your requests and their outcomes
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </div>
+          </div>
         </div>
       </main>
       <Footer />
