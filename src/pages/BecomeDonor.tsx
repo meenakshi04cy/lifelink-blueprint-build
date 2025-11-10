@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart } from "lucide-react";
+import { Heart, Calendar, MapPin, Activity, TrendingUp } from "lucide-react";
 
 const BecomeDonor = () => {
   const handleSubmit = (e: React.FormEvent) => {
@@ -19,7 +19,7 @@ const BecomeDonor = () => {
       <Header />
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto max-w-3xl">
-          <div className="text-center mb-8">
+          <div className="text-center mb-12">
             <div className="flex justify-center mb-4">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <Heart className="w-10 h-10 text-primary" />
@@ -29,6 +29,56 @@ const BecomeDonor = () => {
             <p className="text-xl text-muted-foreground">
               Thank you for choosing to save lives. Please fill out the registration form below.
             </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <Card className="border-primary/20">
+              <CardHeader>
+                <Calendar className="w-12 h-12 text-primary mb-4" />
+                <CardTitle className="text-lg">Update Availability</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Let hospitals know when you're ready to donate again. Set your availability status anytime.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/20">
+              <CardHeader>
+                <Activity className="w-12 h-12 text-primary mb-4" />
+                <CardTitle className="text-lg">Stay Visible</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Stay visible to those who need you. Your profile helps hospitals match urgent requests.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/20">
+              <CardHeader>
+                <MapPin className="w-12 h-12 text-primary mb-4" />
+                <CardTitle className="text-lg">View Nearby Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  See real-time blood requests near your location and connect with patients easily.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/20">
+              <CardHeader>
+                <TrendingUp className="w-12 h-12 text-primary mb-4" />
+                <CardTitle className="text-lg">Track Donation History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Keep a record of your donations and see how many lives you've helped save.
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
