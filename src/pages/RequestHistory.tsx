@@ -4,44 +4,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { History, Calendar, Droplet, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const RequestHistory = () => {
-  // Mock data - will be replaced with real data from backend
-  const requestHistory = [
-    {
-      id: 1,
-      bloodType: "A+",
-      units: 2,
-      date: "2024-01-15",
-      status: "Fulfilled",
-      hospital: "City General Hospital",
-      urgency: "Critical",
-    },
-    {
-      id: 2,
-      bloodType: "O+",
-      units: 1,
-      date: "2023-11-20",
-      status: "Fulfilled",
-      hospital: "St. Mary's Medical Center",
-      urgency: "Urgent",
-    },
-    {
-      id: 3,
-      bloodType: "A+",
-      units: 3,
-      date: "2023-08-10",
-      status: "Cancelled",
-      hospital: "Regional Health Center",
-      urgency: "Normal",
-    },
-  ];
+  const [requestHistory, setRequestHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/login");
+        return;
+      }
+
+      const { data } = await supabase
+        .from("blood_requests")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        setRequestHistory(data);
+      }
+      setLoading(false);
+    };
+
+    fetchRequests();
+  }, [navigate]);
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "Fulfilled":
+      case "fulfilled":
         return "default";
-      case "Cancelled":
+      case "cancelled":
         return "secondary";
       default:
         return "outline";
@@ -76,57 +75,67 @@ const RequestHistory = () => {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {requestHistory.map((request) => (
-              <Card key={request.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <Droplet className="w-5 h-5 text-primary" />
-                        {request.bloodType} - {request.units} {request.units > 1 ? "Units" : "Unit"}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(request.date).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={getStatusVariant(request.status)}>
-                      {request.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{request.hospital}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {request.urgency}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {requestHistory.length === 0 && (
+          {loading ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  You haven't made any blood requests yet.
-                </p>
-                <Button variant="hero">Make Your First Request</Button>
+                <p className="text-muted-foreground">Loading your requests...</p>
               </CardContent>
             </Card>
+          ) : (
+            <div className="space-y-4">
+              {requestHistory.map((request) => (
+                <Card key={request.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2">
+                          <Droplet className="w-5 h-5 text-primary" />
+                          {request.blood_type} - {request.units_needed} {request.units_needed > 1 ? "Units" : "Unit"}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(request.created_at).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={getStatusVariant(request.status)}>
+                        {request.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">{request.hospital_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {request.urgency_level}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {requestHistory.length === 0 && (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      You haven't made any blood requests yet.
+                    </p>
+                    <Button variant="hero" onClick={() => navigate("/request-blood")}>
+                      Make Your First Request
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
         </div>
       </main>

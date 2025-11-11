@@ -7,12 +7,79 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Calendar, Eye, MapPin, History } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const RequestBlood = () => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const [bloodType, setBloodType] = useState("");
+  const [urgency, setUrgency] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Blood request logic will be implemented with backend
+
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to request blood.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData(e.target as HTMLFormElement);
+
+      const { error } = await supabase.from("blood_requests").insert({
+        user_id: user.id,
+        patient_name: formData.get("patientName") as string,
+        blood_type: bloodType,
+        units_needed: parseInt(formData.get("units") as string),
+        hospital_name: formData.get("hospital") as string,
+        hospital_address: `${formData.get("hospitalAddress")}, ${formData.get("city")}, ${formData.get("state")} ${formData.get("zip")}`,
+        contact_number: formData.get("contactPhone") as string,
+        urgency_level: urgency,
+        required_by: formData.get("requiredBy") as string,
+        medical_reason: formData.get("reason") as string || null,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Request submitted!",
+        description: "Your blood request has been submitted successfully.",
+      });
+
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Request failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,28 +112,28 @@ const RequestBlood = () => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="patientName">Patient Name</Label>
-                      <Input id="patientName" required />
+                      <Input id="patientName" name="patientName" required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="patientAge">Age</Label>
-                      <Input id="patientAge" type="number" min="0" required />
+                      <Input id="patientAge" name="patientAge" type="number" min="0" required />
                     </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="contactPerson">Contact Person</Label>
-                      <Input id="contactPerson" required />
+                      <Input id="contactPerson" name="contactPerson" required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="contactPhone">Contact Phone</Label>
-                      <Input id="contactPhone" type="tel" required />
+                      <Input id="contactPhone" name="contactPhone" type="tel" required />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="contactEmail">Contact Email</Label>
-                    <Input id="contactEmail" type="email" required />
+                    <Input id="contactEmail" name="contactEmail" type="email" required />
                   </div>
                 </div>
 
@@ -76,7 +143,7 @@ const RequestBlood = () => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="bloodType">Blood Type Required</Label>
-                      <Select required>
+                      <Select value={bloodType} onValueChange={setBloodType} required>
                         <SelectTrigger>
                           <SelectValue placeholder="Select blood type" />
                         </SelectTrigger>
@@ -94,13 +161,13 @@ const RequestBlood = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="units">Units Required</Label>
-                      <Input id="units" type="number" min="1" required />
+                      <Input id="units" name="units" type="number" min="1" required />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="urgency">Urgency Level</Label>
-                    <Select required>
+                    <Select value={urgency} onValueChange={setUrgency} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select urgency" />
                       </SelectTrigger>
@@ -114,7 +181,7 @@ const RequestBlood = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="requiredBy">Required By Date</Label>
-                    <Input id="requiredBy" type="date" required />
+                    <Input id="requiredBy" name="requiredBy" type="date" required />
                   </div>
                 </div>
 
@@ -123,26 +190,26 @@ const RequestBlood = () => {
                   
                   <div className="space-y-2">
                     <Label htmlFor="hospital">Hospital Name</Label>
-                    <Input id="hospital" required />
+                    <Input id="hospital" name="hospital" required />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="hospitalAddress">Hospital Address</Label>
-                    <Input id="hospitalAddress" required />
+                    <Input id="hospitalAddress" name="hospitalAddress" required />
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
-                      <Input id="city" required />
+                      <Input id="city" name="city" required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="state">State</Label>
-                      <Input id="state" required />
+                      <Input id="state" name="state" required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="zip">ZIP Code</Label>
-                      <Input id="zip" required />
+                      <Input id="zip" name="zip" required />
                     </div>
                   </div>
 
@@ -150,20 +217,20 @@ const RequestBlood = () => {
                     <Label htmlFor="reason">Reason for Transfusion (Optional)</Label>
                     <Textarea
                       id="reason"
+                      name="reason"
                       placeholder="E.g., surgery, accident, medical condition"
                       rows={3}
                     />
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" variant="hero" size="lg">
-                  Submit Blood Request
+                <Button type="submit" className="w-full" variant="hero" size="lg" disabled={loading}>
+                  {loading ? "Submitting..." : "Submit Blood Request"}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* Donor Benefits & Features — replaces previous "Manage Your Requests" cards but keeps existing routes */}
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-center mb-8">Donor Benefits & Features</h2>
             <div className="max-w-6xl mx-auto">

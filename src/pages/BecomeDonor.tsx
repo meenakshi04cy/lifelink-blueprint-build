@@ -7,12 +7,76 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Heart, Calendar, MapPin, Activity, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const BecomeDonor = () => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const [bloodType, setBloodType] = useState("");
+  const [weight, setWeight] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Donor registration logic will be implemented with backend
+
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to register as a donor.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData(e.target as HTMLFormElement);
+      const age = parseInt(formData.get("age") as string);
+
+      const { error } = await supabase.from("donors").insert({
+        user_id: user.id,
+        blood_type: bloodType,
+        age,
+        weight: parseFloat(weight),
+        last_donation_date: formData.get("lastDonation") as string || null,
+        medical_conditions: formData.get("medicalConditions") as string || null,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Registration successful!",
+        description: "You are now registered as a blood donor.",
+      });
+
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,50 +105,12 @@ const BecomeDonor = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" required />
+                    <Label htmlFor="age">Age</Label>
+                    <Input id="age" name="age" type="number" min="18" max="65" required />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" required />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" required />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dob">Date of Birth</Label>
-                    <Input id="dob" type="date" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="bloodType">Blood Type</Label>
-                    <Select required>
+                    <Select value={bloodType} onValueChange={setBloodType} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select blood type" />
                       </SelectTrigger>
@@ -100,30 +126,22 @@ const BecomeDonor = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="weight">Weight (kg)</Label>
-                    <Input id="weight" type="number" min="50" required />
+                    <Input id="weight" name="weight" type="number" min="50" value={weight} onChange={(e) => setWeight(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastDonation">Last Donation Date (Optional)</Label>
+                    <Input id="lastDonation" name="lastDonation" type="date" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input id="address" required />
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input id="state" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="zip">ZIP Code</Label>
-                    <Input id="zip" required />
-                  </div>
+                  <Label htmlFor="medicalConditions">Medical Conditions (Optional)</Label>
+                  <Input id="medicalConditions" name="medicalConditions" placeholder="List any medical conditions" />
                 </div>
 
                 <div className="space-y-4 border-t pt-6">
@@ -158,8 +176,8 @@ const BecomeDonor = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" variant="hero" size="lg">
-                  Register as Donor
+                <Button type="submit" className="w-full" variant="hero" size="lg" disabled={loading}>
+                  {loading ? "Registering..." : "Register as Donor"}
                 </Button>
               </form>
             </CardContent>
