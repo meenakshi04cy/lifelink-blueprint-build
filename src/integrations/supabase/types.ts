@@ -14,7 +14,191 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blood_requests: {
+        Row: {
+          blood_type: string
+          contact_number: string
+          created_at: string | null
+          hospital_address: string
+          hospital_name: string
+          id: string
+          medical_reason: string | null
+          patient_name: string
+          required_by: string
+          status: string | null
+          units_needed: number
+          updated_at: string | null
+          urgency_level: string
+          user_id: string
+          visibility_location_sharing: boolean | null
+          visibility_public: boolean | null
+          visibility_show_contact: boolean | null
+          visibility_verified_only: boolean | null
+        }
+        Insert: {
+          blood_type: string
+          contact_number: string
+          created_at?: string | null
+          hospital_address: string
+          hospital_name: string
+          id?: string
+          medical_reason?: string | null
+          patient_name: string
+          required_by: string
+          status?: string | null
+          units_needed: number
+          updated_at?: string | null
+          urgency_level: string
+          user_id: string
+          visibility_location_sharing?: boolean | null
+          visibility_public?: boolean | null
+          visibility_show_contact?: boolean | null
+          visibility_verified_only?: boolean | null
+        }
+        Update: {
+          blood_type?: string
+          contact_number?: string
+          created_at?: string | null
+          hospital_address?: string
+          hospital_name?: string
+          id?: string
+          medical_reason?: string | null
+          patient_name?: string
+          required_by?: string
+          status?: string | null
+          units_needed?: number
+          updated_at?: string | null
+          urgency_level?: string
+          user_id?: string
+          visibility_location_sharing?: boolean | null
+          visibility_public?: boolean | null
+          visibility_show_contact?: boolean | null
+          visibility_verified_only?: boolean | null
+        }
+        Relationships: []
+      }
+      donation_history: {
+        Row: {
+          blood_type: string
+          created_at: string | null
+          donation_date: string
+          donor_id: string
+          id: string
+          location: string
+          notes: string | null
+          units: number
+        }
+        Insert: {
+          blood_type: string
+          created_at?: string | null
+          donation_date: string
+          donor_id: string
+          id?: string
+          location: string
+          notes?: string | null
+          units: number
+        }
+        Update: {
+          blood_type?: string
+          created_at?: string | null
+          donation_date?: string
+          donor_id?: string
+          id?: string
+          location?: string
+          notes?: string | null
+          units?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donation_history_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donors: {
+        Row: {
+          age: number
+          availability_status: string | null
+          blood_type: string
+          created_at: string | null
+          id: string
+          is_available: boolean | null
+          last_donation_date: string | null
+          medical_conditions: string | null
+          updated_at: string | null
+          user_id: string
+          visibility_location_sharing: boolean | null
+          visibility_public: boolean | null
+          visibility_show_contact: boolean | null
+          visibility_verified_only: boolean | null
+          weight: number
+        }
+        Insert: {
+          age: number
+          availability_status?: string | null
+          blood_type: string
+          created_at?: string | null
+          id?: string
+          is_available?: boolean | null
+          last_donation_date?: string | null
+          medical_conditions?: string | null
+          updated_at?: string | null
+          user_id: string
+          visibility_location_sharing?: boolean | null
+          visibility_public?: boolean | null
+          visibility_show_contact?: boolean | null
+          visibility_verified_only?: boolean | null
+          weight: number
+        }
+        Update: {
+          age?: number
+          availability_status?: string | null
+          blood_type?: string
+          created_at?: string | null
+          id?: string
+          is_available?: boolean | null
+          last_donation_date?: string | null
+          medical_conditions?: string | null
+          updated_at?: string | null
+          user_id?: string
+          visibility_location_sharing?: boolean | null
+          visibility_public?: boolean | null
+          visibility_show_contact?: boolean | null
+          visibility_verified_only?: boolean | null
+          weight?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
