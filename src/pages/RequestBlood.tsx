@@ -101,7 +101,7 @@ const RequestBlood = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Blood Request Form</CardTitle>
+              <CardTitle>Blood Request</CardTitle>
               <CardDescription>Provide accurate information for faster matching</CardDescription>
             </CardHeader>
             <CardContent>

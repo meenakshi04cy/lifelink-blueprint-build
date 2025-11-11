@@ -98,7 +98,7 @@ const BecomeDonor = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Donor Registration Form</CardTitle>
+              <CardTitle>Donor Registration</CardTitle>
               <CardDescription>All fields are required unless marked optional</CardDescription>
             </CardHeader>
             <CardContent>
