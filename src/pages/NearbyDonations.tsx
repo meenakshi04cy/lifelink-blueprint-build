@@ -4,32 +4,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Droplet, Phone, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
+
+type Donor = Database["public"]["Tables"]["donors"]["Row"];
 
 const NearbyDonations = () => {
-  // Mock data - will be replaced with real data from backend
-  const nearbyDonors = [
-    {
-      id: 1,
-      bloodType: "O+",
-      distance: "1.2 km",
-      available: true,
-      lastDonation: "3 months ago",
-    },
-    {
-      id: 2,
-      bloodType: "A+",
-      distance: "2.5 km",
-      available: true,
-      lastDonation: "4 months ago",
-    },
-    {
-      id: 3,
-      bloodType: "B+",
-      distance: "3.8 km",
-      available: false,
-      lastDonation: "1 month ago",
-    },
-  ];
+  const [donors, setDonors] = useState<Donor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchDonors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("donors")
+          .select("*")
+          .eq("is_available", true)
+          .eq("visibility_public", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setDonors(data || []);
+      } catch (error) {
+        console.error("Error fetching donors:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load available donors",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDonors();
+  }, [toast]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -48,56 +60,61 @@ const NearbyDonations = () => {
             </p>
           </div>
 
-          <div className="space-y-4">
-            {nearbyDonors.map((donor) => (
-              <Card key={donor.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <Droplet className="w-5 h-5 text-primary" />
-                        Blood Type: {donor.bloodType}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        {donor.distance} away
-                      </CardDescription>
-                    </div>
-                    <Badge variant={donor.available ? "default" : "secondary"}>
-                      {donor.available ? "Available" : "Not Available"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      Last donation: {donor.lastDonation}
-                    </div>
-                    
-                    {donor.available && (
-                      <div className="flex gap-2">
-                        <Button variant="hero" className="flex-1">
-                          <Phone className="w-4 h-4 mr-2" />
-                          Contact Donor
-                        </Button>
-                        <Button variant="outline" className="flex-1">
-                          View Profile
-                        </Button>
+          {loading ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">Loading available donors...</p>
+              </CardContent>
+            </Card>
+          ) : donors.length > 0 ? (
+            <div className="space-y-4">
+              {donors.map((donor) => (
+                <Card key={donor.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2">
+                          <Droplet className="w-5 h-5 text-primary" />
+                          Blood Type: {donor.blood_type}
+                        </CardTitle>
+                        <CardDescription>
+                          {donor.availability_status}
+                        </CardDescription>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {nearbyDonors.length === 0 && (
+                      <Badge variant="default">Available</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {donor.last_donation_date && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          Last donation: {new Date(donor.last_donation_date).toLocaleDateString()}
+                        </div>
+                      )}
+                      
+                      {donor.visibility_show_contact && (
+                        <div className="flex gap-2">
+                          <Button variant="hero" className="flex-1">
+                            <Phone className="w-4 h-4 mr-2" />
+                            Contact Donor
+                          </Button>
+                          <Button variant="outline" className="flex-1">
+                            View Profile
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
             <Card>
               <CardContent className="py-12 text-center">
                 <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  No donors found nearby. Try expanding your search radius.
+                  No available donors found at this time. Check back later!
                 </p>
               </CardContent>
             </Card>
