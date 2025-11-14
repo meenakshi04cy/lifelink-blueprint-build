@@ -3,13 +3,32 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, Droplet, AlertCircle, Phone } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MapPin, Clock, Droplet, AlertCircle, Phone, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface BloodRequest {
+  id: string;
+  patient_name: string;
+  hospital_name: string;
+  urgency_level: string;
+  blood_type: string;
+  units_needed: number;
+  required_by: string;
+  status: string;
+  created_at: string;
+  contact_phone?: string;
+  contact_email?: string;
+  notes?: string;
+}
+
 const NearbyRequests = () => {
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<BloodRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRequest, setSelectedRequest] = useState<BloodRequest | null>(null);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -105,11 +124,25 @@ const NearbyRequests = () => {
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <Button className="flex-1" variant="hero">
+                      <Button 
+                        className="flex-1" 
+                        variant="hero"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowContactDialog(true);
+                        }}
+                      >
                         <Phone className="w-4 h-4 mr-2" />
                         Contact Hospital
                       </Button>
-                      <Button className="flex-1" variant="outline">
+                      <Button 
+                        className="flex-1" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowDetailsDialog(true);
+                        }}
+                      >
                         View Details
                       </Button>
                     </div>
@@ -131,6 +164,136 @@ const NearbyRequests = () => {
           )}
         </div>
       </main>
+
+      {/* Contact Hospital Dialog */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contact Hospital</DialogTitle>
+            <DialogDescription>
+              Reach out to {selectedRequest?.hospital_name} for this blood request
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Hospital</p>
+                  <p className="font-semibold">{selectedRequest.hospital_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Patient</p>
+                  <p className="font-semibold">{selectedRequest.patient_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Blood Type Needed</p>
+                  <p className="font-semibold text-lg text-primary">{selectedRequest.blood_type}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-semibold">
+                    {selectedRequest.contact_phone || "Not available"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-semibold break-all">
+                    {selectedRequest.contact_email || "Not available"}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                className="w-full" 
+                variant="hero"
+                onClick={() => {
+                  if (selectedRequest.contact_phone) {
+                    window.location.href = `tel:${selectedRequest.contact_phone}`;
+                  }
+                }}
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Call Hospital
+              </Button>
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => setShowContactDialog(false)}
+              >
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Details</DialogTitle>
+            <DialogDescription>
+              Complete information about this blood request
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Blood Type</p>
+                  <p className="font-semibold text-lg text-primary">{selectedRequest.blood_type}</p>
+                </div>
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Units Needed</p>
+                  <p className="font-semibold text-lg">{selectedRequest.units_needed}</p>
+                </div>
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Urgency</p>
+                  <Badge variant={selectedRequest.urgency_level === "critical" ? "destructive" : "default"} className="mt-1">
+                    {selectedRequest.urgency_level}
+                  </Badge>
+                </div>
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge variant="outline" className="mt-1">{selectedRequest.status}</Badge>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Patient Name</p>
+                  <p className="font-semibold">{selectedRequest.patient_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Hospital</p>
+                  <p className="font-semibold">{selectedRequest.hospital_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Required By</p>
+                  <p className="font-semibold">
+                    {new Date(selectedRequest.required_by).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                {selectedRequest.notes && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Notes</p>
+                    <p className="font-semibold">{selectedRequest.notes}</p>
+                  </div>
+                )}
+              </div>
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => setShowDetailsDialog(false)}
+              >
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Footer />
     </div>
   );
