@@ -21,6 +21,9 @@ import RequestorVisibility from "./pages/RequestorVisibility";
 import NearbyDonations from "./pages/NearbyDonations";
 import RequestHistory from "./pages/RequestHistory";
 import NotFound from "./pages/NotFound";
+import HospitalRegister from "./pages/HospitalRegister";
+import HospitalRegisterSuccess from "./pages/HospitalRegisterSuccess";
+import AdminHospitalsPending from "./pages/AdminHospitalsPending";
 
 const queryClient = new QueryClient();
 
@@ -35,8 +38,11 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/signup/hospital" element={<HospitalSignup />} />
+          <Route path="/hospital/register" element={<HospitalRegister />} />
+          <Route path="/hospital/register/success" element={<HospitalRegisterSuccess />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/hospital-pending" element={<HospitalPending />} />
+          <Route path="/admin/hospitals/pending" element={<AdminHospitalsPending />} />
           <Route path="/become-donor" element={<BecomeDonor />} />
           <Route path="/request-blood" element={<RequestBlood />} />
           <Route path="/about" element={<About />} />
