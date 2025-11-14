@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import HospitalSignup from "./pages/HospitalSignup";
+import GetStarted from "./pages/GetStarted";
+import HospitalPending from "./pages/HospitalPending";
 import BecomeDonor from "./pages/BecomeDonor";
 import RequestBlood from "./pages/RequestBlood";
 import About from "./pages/About";
@@ -31,6 +34,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/signup/hospital" element={<HospitalSignup />} />
+          <Route path="/get-started" element={<GetStarted />} />
+          <Route path="/hospital-pending" element={<HospitalPending />} />
           <Route path="/become-donor" element={<BecomeDonor />} />
           <Route path="/request-blood" element={<RequestBlood />} />
           <Route path="/about" element={<About />} />
