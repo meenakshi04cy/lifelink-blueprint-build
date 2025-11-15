@@ -4,14 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MapPin, Clock, Droplet, AlertCircle, Phone, X } from "lucide-react";
+import { MapPin, Clock, Droplet, AlertCircle, Phone, X, Navigation, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import EntityMap from "@/components/EntityMap";
+import { useNavigate } from "react-router-dom";
 
 interface BloodRequest {
   id: string;
   patient_name: string;
   hospital_name: string;
+  hospital_address?: string;
+  hospital_latitude?: number;
+  hospital_longitude?: number;
+  patient_latitude?: number;
+  patient_longitude?: number;
   urgency_level: string;
   blood_type: string;
   units_needed: number;
@@ -29,6 +36,7 @@ const NearbyRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState<BloodRequest | null>(null);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -63,6 +71,15 @@ const NearbyRequests = () => {
       <Header />
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto max-w-4xl">
+          <Button
+            onClick={() => navigate(-1)}
+            variant="ghost"
+            size="sm"
+            className="mb-6 flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
@@ -131,6 +148,8 @@ const NearbyRequests = () => {
                           setSelectedRequest(request);
                           setShowContactDialog(true);
                         }}
+                        disabled={!request.contact_phone}
+                        title={request.contact_phone ? "Click to call the hospital" : "No phone number available"}
                       >
                         <Phone className="w-4 h-4 mr-2" />
                         Contact Hospital
@@ -208,11 +227,14 @@ const NearbyRequests = () => {
                 onClick={() => {
                   if (selectedRequest.contact_phone) {
                     window.location.href = `tel:${selectedRequest.contact_phone}`;
+                  } else {
+                    alert('Phone number not available for this hospital');
                   }
                 }}
+                disabled={!selectedRequest.contact_phone}
               >
                 <Phone className="w-4 h-4 mr-2" />
-                Call Hospital
+                {selectedRequest.contact_phone ? 'Call Hospital' : 'No Phone Available'}
               </Button>
               <Button 
                 className="w-full" 
@@ -228,68 +250,134 @@ const NearbyRequests = () => {
 
       {/* View Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-screen overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Request Details</DialogTitle>
+            <DialogTitle>Request Details & Hospital Location</DialogTitle>
             <DialogDescription>
-              Complete information about this blood request
+              Complete information about this blood request and hospital directions
             </DialogDescription>
           </DialogHeader>
           {selectedRequest && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Blood Type</p>
-                  <p className="font-semibold text-lg text-primary">{selectedRequest.blood_type}</p>
+            <div className="space-y-6">
+              {/* Hospital Map Section */}
+              {selectedRequest.hospital_latitude && selectedRequest.hospital_longitude && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-primary" />
+                    Hospital Location
+                  </h3>
+                  <EntityMap
+                    latitude={selectedRequest.hospital_latitude}
+                    longitude={selectedRequest.hospital_longitude}
+                    hospitalName={selectedRequest.hospital_name}
+                    address={selectedRequest.hospital_address || ""}
+                    height="h-64"
+                  />
                 </div>
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Units Needed</p>
-                  <p className="font-semibold text-lg">{selectedRequest.units_needed}</p>
+              )}
+
+              {/* Patient Location Map Section */}
+              {selectedRequest.patient_latitude && selectedRequest.patient_longitude && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-red-500" />
+                    Patient Location
+                  </h3>
+                  <EntityMap
+                    latitude={selectedRequest.patient_latitude}
+                    longitude={selectedRequest.patient_longitude}
+                    hospitalName={selectedRequest.patient_name}
+                    address="Patient's Location"
+                    height="h-64"
+                  />
                 </div>
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Urgency</p>
-                  <Badge variant={selectedRequest.urgency_level === "critical" ? "destructive" : "default"} className="mt-1">
-                    {selectedRequest.urgency_level}
-                  </Badge>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <Badge variant="outline" className="mt-1">{selectedRequest.status}</Badge>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Patient Name</p>
-                  <p className="font-semibold">{selectedRequest.patient_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Hospital</p>
-                  <p className="font-semibold">{selectedRequest.hospital_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Required By</p>
-                  <p className="font-semibold">
-                    {new Date(selectedRequest.required_by).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-                {selectedRequest.notes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Notes</p>
-                    <p className="font-semibold">{selectedRequest.notes}</p>
+              )}
+
+              {/* Request Details */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Request Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Blood Type</p>
+                    <p className="font-semibold text-lg text-primary">{selectedRequest.blood_type}</p>
                   </div>
-                )}
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Units Needed</p>
+                    <p className="font-semibold text-lg">{selectedRequest.units_needed}</p>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Urgency</p>
+                    <Badge variant={selectedRequest.urgency_level === "critical" ? "destructive" : "default"} className="mt-1">
+                      {selectedRequest.urgency_level}
+                    </Badge>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge variant="outline" className="mt-1">{selectedRequest.status}</Badge>
+                  </div>
+                </div>
               </div>
-              <Button 
-                className="w-full" 
-                variant="outline"
-                onClick={() => setShowDetailsDialog(false)}
-              >
-                Close
-              </Button>
+
+              {/* Hospital & Patient Details */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Hospital & Patient Information</h3>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Patient Name</p>
+                    <p className="font-semibold">{selectedRequest.patient_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Hospital</p>
+                    <p className="font-semibold">{selectedRequest.hospital_name}</p>
+                  </div>
+                  {selectedRequest.hospital_address && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Hospital Address</p>
+                      <p className="font-semibold">{selectedRequest.hospital_address}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Required By</p>
+                    <p className="font-semibold">
+                      {new Date(selectedRequest.required_by).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  {selectedRequest.notes && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Notes</p>
+                      <p className="font-semibold">{selectedRequest.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  className="flex-1" 
+                  variant="hero"
+                  onClick={() => {
+                    setShowDetailsDialog(false);
+                    setShowContactDialog(true);
+                  }}
+                  disabled={!selectedRequest.contact_phone}
+                  title={selectedRequest.contact_phone ? "Click to call the hospital" : "No phone number available"}
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  {selectedRequest.contact_phone ? 'Contact Hospital' : 'No Phone'}
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  variant="outline"
+                  onClick={() => setShowDetailsDialog(false)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

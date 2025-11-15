@@ -6,17 +6,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Heart, Calendar, MapPin, Activity, TrendingUp, ArrowLeft } from "lucide-react";
+import { Heart, Calendar, MapPin, Activity, TrendingUp, ArrowLeft, Navigation } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const BecomeDonor = () => {
   const [bloodType, setBloodType] = useState("");
   const [weight, setWeight] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [hospitalName, setHospitalName] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [distance, setDistance] = useState("25");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -58,6 +63,10 @@ const BecomeDonor = () => {
         weight: parseFloat(weight),
         last_donation_date: formData.get("lastDonation") as string || null,
         medical_conditions: formData.get("medicalConditions") as string || null,
+        donor_hospital_name: hospitalName,
+        donor_city: city,
+        donor_state: state,
+        willing_distance_km: parseInt(distance),
       });
 
       if (error) throw error;
@@ -151,6 +160,73 @@ const BecomeDonor = () => {
                 <div className="space-y-2">
                   <Label htmlFor="medicalConditions">Medical Conditions (Optional)</Label>
                   <Input id="medicalConditions" name="medicalConditions" placeholder="List any medical conditions" />
+                </div>
+
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-primary" />
+                    Location & Availability
+                  </h3>
+
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <Navigation className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Help hospitals find you by sharing your location and how far you're willing to travel
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="hospital">Hospital / Health Center Name</Label>
+                      <Input 
+                        id="hospital" 
+                        placeholder="Where do you usually donate?" 
+                        value={hospitalName}
+                        onChange={(e) => setHospitalName(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input 
+                        id="city" 
+                        placeholder="Your city" 
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State / Province</Label>
+                      <Input 
+                        id="state" 
+                        placeholder="Your state" 
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="distance">Willing to Travel (km)</Label>
+                      <Select value={distance} onValueChange={setDistance} required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select distance" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 km</SelectItem>
+                          <SelectItem value="10">10 km</SelectItem>
+                          <SelectItem value="15">15 km</SelectItem>
+                          <SelectItem value="25">25 km</SelectItem>
+                          <SelectItem value="50">50 km</SelectItem>
+                          <SelectItem value="100">100 km</SelectItem>
+                          <SelectItem value="200">200+ km</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4 border-t pt-6">

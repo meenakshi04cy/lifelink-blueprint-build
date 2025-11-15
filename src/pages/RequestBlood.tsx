@@ -6,17 +6,33 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Calendar, Eye, MapPin, History, ArrowLeft } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Calendar, Eye, MapPin, History, ArrowLeft, Navigation, Phone, Check } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import EntityMap from "@/components/EntityMap";
+import { geocodeAddress } from "@/lib/geocoding";
 
 const RequestBlood = () => {
   const [bloodType, setBloodType] = useState("");
   const [urgency, setUrgency] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [hospitalLat, setHospitalLat] = useState<number | null>(null);
+  const [hospitalLng, setHospitalLng] = useState<number | null>(null);
+  const [hospitalName, setHospitalName] = useState("");
+  const [hospitalAddress, setHospitalAddress] = useState("");
+  const [hospitalAddressInput, setHospitalAddressInput] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [patientLat, setPatientLat] = useState<number | null>(null);
+  const [patientLng, setPatientLng] = useState<number | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,6 +48,73 @@ const RequestBlood = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const validatePhoneNumber = (phone: string): boolean => {
+    if (!phone.trim()) return false;
+    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
+    return phoneRegex.test(phone.trim());
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setContactPhone(value);
+    if (value.trim() && !validatePhoneNumber(value)) {
+      setPhoneError("Please enter a valid phone number (e.g., +1 (555) 123-4567 or 9876543210)");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  const getPatientLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "GPS Not Available",
+        description: "Your browser does not support GPS location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setPatientLat(position.coords.latitude);
+        setPatientLng(position.coords.longitude);
+        setGpsLoading(false);
+        toast({
+          title: "Location Captured",
+          description: `Coordinates: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+        });
+      },
+      (error) => {
+        setGpsLoading(false);
+        toast({
+          title: "GPS Error",
+          description: error.message || "Could not get your location. Please enable location services.",
+          variant: "destructive",
+        });
+      }
+    );
+  };
+
+  // Geocode hospital address when all details are filled
+  useEffect(() => {
+    const geocodeHospital = async () => {
+      if (hospitalAddressInput && city && state && zip && hospitalName) {
+        try {
+          const result = await geocodeAddress(hospitalAddressInput, city, state, zip);
+          if (result) {
+            setHospitalLat(result.latitude);
+            setHospitalLng(result.longitude);
+            setHospitalAddress(result.formattedAddress || hospitalAddressInput);
+          }
+        } catch (error) {
+          console.error("Geocoding error:", error);
+        }
+      }
+    };
+
+    geocodeHospital();
+  }, [hospitalName, hospitalAddressInput, city, state, zip]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -45,6 +128,27 @@ const RequestBlood = () => {
       return;
     }
 
+    // Validate hospital contact phone
+    if (!contactPhone.trim()) {
+      setPhoneError("Hospital contact phone number is required");
+      toast({
+        title: "Validation Error",
+        description: "Please provide a hospital contact phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validatePhoneNumber(contactPhone)) {
+      setPhoneError("Please enter a valid phone number");
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid phone number format",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -55,12 +159,16 @@ const RequestBlood = () => {
         patient_name: formData.get("patientName") as string,
         blood_type: bloodType,
         units_needed: parseInt(formData.get("units") as string),
-        hospital_name: formData.get("hospital") as string,
-        hospital_address: `${formData.get("hospitalAddress")}, ${formData.get("city")}, ${formData.get("state")} ${formData.get("zip")}`,
-        contact_number: formData.get("contactPhone") as string,
+        hospital_name: hospitalName,
+        hospital_address: `${hospitalAddressInput}, ${city}, ${state} ${zip}`,
+        contact_number: contactPhone,
         urgency_level: urgency,
         required_by: formData.get("requiredBy") as string,
         medical_reason: formData.get("reason") as string || null,
+        hospital_latitude: hospitalLat,
+        hospital_longitude: hospitalLng,
+        patient_latitude: patientLat,
+        patient_longitude: patientLng,
       });
 
       if (error) throw error;
@@ -129,20 +237,48 @@ const RequestBlood = () => {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="contactPerson">Contact Person</Label>
-                      <Input id="contactPerson" name="contactPerson" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="contactPhone">Contact Phone</Label>
-                      <Input id="contactPhone" name="contactPhone" type="tel" required />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPerson">Contact Person</Label>
+                    <Input id="contactPerson" name="contactPerson" required />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="contactEmail">Contact Email</Label>
                     <Input id="contactEmail" name="contactEmail" type="email" required />
+                  </div>
+
+                  {/* Patient GPS Location */}
+                  <div className="space-y-2 border-t pt-4">
+                    <Label className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <span>Patient Location (GPS)</span>
+                      {patientLat && patientLng && (
+                        <Check className="w-4 h-4 text-green-600" />
+                      )}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={getPatientLocation}
+                        disabled={gpsLoading}
+                        className="flex-1"
+                      >
+                        <Navigation className="w-4 h-4 mr-2" />
+                        {gpsLoading ? "Getting Location..." : "Get Patient Location"}
+                      </Button>
+                    </div>
+                    {patientLat && patientLng && (
+                      <div className="bg-muted p-2 rounded text-sm">
+                        <p className="text-muted-foreground">Coordinates captured:</p>
+                        <p className="font-mono font-semibold">
+                          {patientLat.toFixed(6)}, {patientLng.toFixed(6)}
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Click to capture patient's current GPS location. This helps donors locate the patient easily.
+                    </p>
                   </div>
                 </div>
 
@@ -197,29 +333,92 @@ const RequestBlood = () => {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg">Hospital Information</h3>
                   
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <Phone className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Please provide an accurate hospital contact phone number. Donors will use this to reach the hospital about the blood request.
+                    </AlertDescription>
+                  </Alert>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="hospital">Hospital Name</Label>
-                    <Input id="hospital" name="hospital" required />
+                    <Input 
+                      id="hospital" 
+                      name="hospital" 
+                      required 
+                      value={hospitalName}
+                      onChange={(e) => setHospitalName(e.target.value)}
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="hospitalAddress">Hospital Address</Label>
-                    <Input id="hospitalAddress" name="hospitalAddress" required />
+                    <Input 
+                      id="hospitalAddress" 
+                      name="hospitalAddress" 
+                      required 
+                      value={hospitalAddressInput}
+                      onChange={(e) => setHospitalAddressInput(e.target.value)}
+                    />
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
-                      <Input id="city" name="city" required />
+                      <Input 
+                        id="city" 
+                        name="city" 
+                        required 
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="state">State</Label>
-                      <Input id="state" name="state" required />
+                      <Input 
+                        id="state" 
+                        name="state" 
+                        required 
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="zip">ZIP Code</Label>
-                      <Input id="zip" name="zip" required />
+                      <Input 
+                        id="zip" 
+                        name="zip" 
+                        required 
+                        value={zip}
+                        onChange={(e) => setZip(e.target.value)}
+                      />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPhone" className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-primary" />
+                      <span>Hospital Contact Phone *</span>
+                      {contactPhone && validatePhoneNumber(contactPhone) && (
+                        <Check className="w-4 h-4 text-green-600" />
+                      )}
+                    </Label>
+                    <Input 
+                      id="contactPhone" 
+                      name="contactPhone" 
+                      type="tel" 
+                      required 
+                      placeholder="e.g., +1 (555) 123-4567 or 9876543210"
+                      value={contactPhone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      className={phoneError ? "border-red-500" : ""}
+                    />
+                    {phoneError && (
+                      <p className="text-sm text-red-600">{phoneError}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Donors will use this number to contact the hospital about the blood request
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -231,6 +430,23 @@ const RequestBlood = () => {
                       rows={3}
                     />
                   </div>
+
+                  {/* Hospital Location Map Section */}
+                  {(hospitalLat && hospitalLng) && (
+                    <div className="mt-6 pt-6 border-t space-y-4">
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-primary" />
+                        Hospital Location Map
+                      </h3>
+                      <EntityMap
+                        latitude={hospitalLat}
+                        longitude={hospitalLng}
+                        hospitalName={hospitalName}
+                        address={hospitalAddress}
+                        height="h-80"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <Button type="submit" className="w-full" variant="hero" size="lg" disabled={loading}>
