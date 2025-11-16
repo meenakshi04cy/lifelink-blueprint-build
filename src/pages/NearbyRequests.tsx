@@ -17,15 +17,13 @@ interface BloodRequest {
   hospital_address?: string;
   hospital_latitude?: number;
   hospital_longitude?: number;
-  patient_latitude?: number;
-  patient_longitude?: number;
   urgency_level: string;
   blood_type: string;
   units_needed: number;
   required_by: string;
   status: string;
   created_at: string;
-  contact_phone?: string;
+  contact_number?: string;
   contact_email?: string;
   notes?: string;
 }
@@ -148,8 +146,8 @@ const NearbyRequests = () => {
                           setSelectedRequest(request);
                           setShowContactDialog(true);
                         }}
-                        disabled={!request.contact_phone}
-                        title={request.contact_phone ? "Click to call the hospital" : "No phone number available"}
+                        disabled={!request.contact_number}
+                        title={request.contact_number ? "Click to call the hospital" : "No phone number available"}
                       >
                         <Phone className="w-4 h-4 mr-2" />
                         Contact Hospital
@@ -211,7 +209,7 @@ const NearbyRequests = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Phone</p>
                   <p className="font-semibold">
-                    {selectedRequest.contact_phone || "Not available"}
+                    {selectedRequest.contact_number || "Not available"}
                   </p>
                 </div>
                 <div>
@@ -225,16 +223,16 @@ const NearbyRequests = () => {
                 className="w-full" 
                 variant="hero"
                 onClick={() => {
-                  if (selectedRequest.contact_phone) {
-                    window.location.href = `tel:${selectedRequest.contact_phone}`;
+                  if (selectedRequest.contact_number) {
+                    window.location.href = `tel:${selectedRequest.contact_number}`;
                   } else {
                     alert('Phone number not available for this hospital');
                   }
                 }}
-                disabled={!selectedRequest.contact_phone}
+                disabled={!selectedRequest.contact_number}
               >
                 <Phone className="w-4 h-4 mr-2" />
-                {selectedRequest.contact_phone ? 'Call Hospital' : 'No Phone Available'}
+                {selectedRequest.contact_number ? 'Call Hospital' : 'No Phone Available'}
               </Button>
               <Button 
                 className="w-full" 
@@ -276,24 +274,7 @@ const NearbyRequests = () => {
                 </div>
               )}
 
-              {/* Patient Location Map Section */}
-              {selectedRequest.patient_latitude && selectedRequest.patient_longitude && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-red-500" />
-                    Patient Location
-                  </h3>
-                  <EntityMap
-                    latitude={selectedRequest.patient_latitude}
-                    longitude={selectedRequest.patient_longitude}
-                    hospitalName={selectedRequest.patient_name}
-                    address="Patient's Location"
-                    height="h-64"
-                  />
-                </div>
-              )}
 
-              {/* Request Details */}
               <div className="space-y-3">
                 <h3 className="font-semibold text-lg">Request Information</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -364,11 +345,11 @@ const NearbyRequests = () => {
                     setShowDetailsDialog(false);
                     setShowContactDialog(true);
                   }}
-                  disabled={!selectedRequest.contact_phone}
-                  title={selectedRequest.contact_phone ? "Click to call the hospital" : "No phone number available"}
+                  disabled={!selectedRequest.contact_number}
+                  title={selectedRequest.contact_number ? "Click to call the hospital" : "No phone number available"}
                 >
                   <Phone className="w-4 h-4 mr-2" />
-                  {selectedRequest.contact_phone ? 'Contact Hospital' : 'No Phone'}
+                  {selectedRequest.contact_number ? 'Contact Hospital' : 'No Phone'}
                 </Button>
                 <Button 
                   className="flex-1" 

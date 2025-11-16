@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Calendar, Eye, MapPin, History, ArrowLeft, Navigation, Phone, Check } from "lucide-react";
+import { AlertCircle, Calendar, Eye, MapPin, History, ArrowLeft, Phone, Check } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,9 +30,6 @@ const RequestBlood = () => {
   const [zip, setZip] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
-  const [patientLat, setPatientLat] = useState<number | null>(null);
-  const [patientLng, setPatientLng] = useState<number | null>(null);
-  const [gpsLoading, setGpsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -63,37 +60,6 @@ const RequestBlood = () => {
     }
   };
 
-  const getPatientLocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: "GPS Not Available",
-        description: "Your browser does not support GPS location.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setPatientLat(position.coords.latitude);
-        setPatientLng(position.coords.longitude);
-        setGpsLoading(false);
-        toast({
-          title: "Location Captured",
-          description: `Coordinates: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
-        });
-      },
-      (error) => {
-        setGpsLoading(false);
-        toast({
-          title: "GPS Error",
-          description: error.message || "Could not get your location. Please enable location services.",
-          variant: "destructive",
-        });
-      }
-    );
-  };
 
   // Geocode hospital address when all details are filled
   useEffect(() => {
@@ -165,10 +131,6 @@ const RequestBlood = () => {
         urgency_level: urgency,
         required_by: formData.get("requiredBy") as string,
         medical_reason: formData.get("reason") as string || null,
-        hospital_latitude: hospitalLat,
-        hospital_longitude: hospitalLng,
-        patient_latitude: patientLat,
-        patient_longitude: patientLng,
       });
 
       if (error) throw error;
@@ -245,40 +207,6 @@ const RequestBlood = () => {
                   <div className="space-y-2">
                     <Label htmlFor="contactEmail">Contact Email</Label>
                     <Input id="contactEmail" name="contactEmail" type="email" required />
-                  </div>
-
-                  {/* Patient GPS Location */}
-                  <div className="space-y-2 border-t pt-4">
-                    <Label className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <span>Patient Location (GPS)</span>
-                      {patientLat && patientLng && (
-                        <Check className="w-4 h-4 text-green-600" />
-                      )}
-                    </Label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={getPatientLocation}
-                        disabled={gpsLoading}
-                        className="flex-1"
-                      >
-                        <Navigation className="w-4 h-4 mr-2" />
-                        {gpsLoading ? "Getting Location..." : "Get Patient Location"}
-                      </Button>
-                    </div>
-                    {patientLat && patientLng && (
-                      <div className="bg-muted p-2 rounded text-sm">
-                        <p className="text-muted-foreground">Coordinates captured:</p>
-                        <p className="font-mono font-semibold">
-                          {patientLat.toFixed(6)}, {patientLng.toFixed(6)}
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Click to capture patient's current GPS location. This helps donors locate the patient easily.
-                    </p>
                   </div>
                 </div>
 
