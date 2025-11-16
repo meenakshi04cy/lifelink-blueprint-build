@@ -20,6 +20,7 @@ import UpdateRequestStatus from "./pages/UpdateRequestStatus";
 import RequestorVisibility from "./pages/RequestorVisibility";
 import NearbyDonations from "./pages/NearbyDonations";
 import RequestHistory from "./pages/RequestHistory";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import HospitalRegister from "./pages/HospitalRegister";
 import HospitalRegisterSuccess from "./pages/HospitalRegisterSuccess";
@@ -54,6 +55,7 @@ const App = () => (
           <Route path="/requestor-visibility" element={<RequestorVisibility />} />
           <Route path="/nearby-donations" element={<NearbyDonations />} />
           <Route path="/request-history" element={<RequestHistory />} />
+          <Route path="/profile" element={<Profile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -120,7 +120,7 @@ const RequestBlood = () => {
     try {
       const formData = new FormData(e.target as HTMLFormElement);
 
-      const { error } = await supabase.from("blood_requests").insert({
+      const basePayload: any = {
         user_id: user.id,
         patient_name: formData.get("patientName") as string,
         blood_type: bloodType,
@@ -131,9 +131,33 @@ const RequestBlood = () => {
         urgency_level: urgency,
         required_by: formData.get("requiredBy") as string,
         medical_reason: formData.get("reason") as string || null,
-      });
+      };
 
-      if (error) throw error;
+      // include coordinates if we have them locally
+      if (hospitalLat !== null && hospitalLng !== null) {
+        basePayload.hospital_latitude = hospitalLat;
+        basePayload.hospital_longitude = hospitalLng;
+      }
+
+      // First attempt: try inserting with coordinates (if present)
+      let insertResult = await supabase.from("blood_requests").insert(basePayload);
+
+      // If DB complains about unknown columns (migration not applied), retry without lat/lng
+      if (insertResult.error) {
+        const msg = (insertResult.error.message || "").toLowerCase();
+        const shouldRetryWithoutCoords = msg.includes("hospital_latitude") || msg.includes("hospital_longitude") || msg.includes("column") && msg.includes("not found");
+
+        if (shouldRetryWithoutCoords && (basePayload.hospital_latitude || basePayload.hospital_longitude)) {
+          // remove the coords and retry
+          const payloadNoCoords = { ...basePayload };
+          delete payloadNoCoords.hospital_latitude;
+          delete payloadNoCoords.hospital_longitude;
+
+          insertResult = await supabase.from("blood_requests").insert(payloadNoCoords);
+        }
+      }
+
+      if (insertResult.error) throw insertResult.error;
 
       toast({
         title: "Request submitted!",

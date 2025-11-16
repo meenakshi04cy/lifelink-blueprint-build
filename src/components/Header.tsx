@@ -1,11 +1,44 @@
 import { Button } from "@/components/ui/button";
 import { Heart, Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import iconBloodHeart from "@/assets/icon-blood-heart.jpg";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const checkUser = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!mounted) return;
+        setIsAuthenticated(!!data.user);
+      } catch (err) {
+        console.error("Error checking auth state:", err);
+      }
+    };
+
+    checkUser();
+
+    // Listen to auth state changes (login/logout)
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
@@ -24,12 +57,23 @@ export const Header = () => {
             <Link to="/about" className="text-foreground hover:text-primary transition-colors">
               About
             </Link>
-            <Link to="/login">
-              <Button variant="outline">Login</Button>
-            </Link>
-            <Link to="/signup">
-              <Button variant="hero">Sign Up</Button>
-            </Link>
+            {!isAuthenticated ? (
+              <>
+                <Link to="/login">
+                  <Button variant="outline">Login</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button variant="hero">Sign Up</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/profile">
+                  <Button variant="ghost">Account</Button>
+                </Link>
+                <Button variant="outline" onClick={handleLogout}>Logout</Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -58,12 +102,23 @@ export const Header = () => {
             >
               About
             </Link>
-            <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="outline" className="w-full">Login</Button>
-            </Link>
-            <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="hero" className="w-full">Sign Up</Button>
-            </Link>
+            {!isAuthenticated ? (
+              <>
+                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">Login</Button>
+                </Link>
+                <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="hero" className="w-full">Sign Up</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full">Account</Button>
+                </Link>
+                <Button variant="outline" className="w-full" onClick={() => { setIsMenuOpen(false); handleLogout(); }}>Logout</Button>
+              </>
+            )}
           </div>
         )}
       </nav>
