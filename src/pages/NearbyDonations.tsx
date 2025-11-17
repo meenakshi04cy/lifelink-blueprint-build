@@ -22,31 +22,10 @@ const NearbyDonations = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchDonors = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("donors")
-          .select("*")
-          .eq("is_available", true)
-          .eq("visibility_public", true)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setDonors(data || []);
-      } catch (error) {
-        console.error("Error fetching donors:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load available donors",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDonors();
-  }, [toast]);
+    const stored = JSON.parse(localStorage.getItem("donors") || "[]");
+    setDonors(stored);
+    setLoading(false);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -89,11 +68,11 @@ const NearbyDonations = () => {
                       <div className="space-y-2 flex-1">
                         <CardTitle className="flex items-center gap-2 text-xl">
                           <Droplet className="w-5 h-5 text-primary" />
-                          Blood Type: <span className="text-primary font-bold">{donor.blood_type}</span>
+                          Blood Type: <span className="text-primary font-bold">{donor.blood_type || "Not specified"}</span>
                         </CardTitle>
                         <CardDescription className="flex items-center gap-2">
                           <MapPin className="w-4 h-4" />
-                          {donor.donor_city}{donor.donor_state ? `, ${donor.donor_state}` : ""}
+                          {donor.donor_city || "Not specified"}{donor.donor_state ? `, ${donor.donor_state}` : ""}
                         </CardDescription>
                       </div>
                       <Badge variant="default" className="flex items-center gap-1">
@@ -117,7 +96,7 @@ const NearbyDonations = () => {
                           <Zap className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
                           <div>
                             <p className="text-sm text-muted-foreground">Willing to Travel</p>
-                            <p className="font-semibold">{donor.willing_distance_km} km</p>
+                            <p className="font-semibold">{donor.willing_distance_km || "Not specified"} km</p>
                           </div>
                         </div>
                       </div>
@@ -128,6 +107,12 @@ const NearbyDonations = () => {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Clock className="w-4 h-4" />
                             <span className="truncate">Last: {new Date(donor.last_donation_date).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {!donor.last_donation_date && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            <span className="truncate">Last: Not specified</span>
                           </div>
                         )}
                         {donor.availability_status && (
@@ -192,7 +177,7 @@ const NearbyDonations = () => {
                   {/* Blood Type */}
                   <div>
                     <p className="text-sm text-muted-foreground">Blood Type</p>
-                    <p className="font-semibold text-lg text-primary">{selectedDonor.blood_type}</p>
+                    <p className="font-semibold text-lg text-primary">{selectedDonor.blood_type || "Not specified"}</p>
                   </div>
 
                   {/* Location Information */}
@@ -201,7 +186,7 @@ const NearbyDonations = () => {
                     <div className="space-y-1">
                       <p className="font-semibold">{selectedDonor.donor_hospital_name || "Not specified"}</p>
                       <p className="text-sm">
-                        {selectedDonor.donor_city}{selectedDonor.donor_state ? `, ${selectedDonor.donor_state}` : ""}
+                        {selectedDonor.donor_city || "Not specified"}{selectedDonor.donor_state ? `, ${selectedDonor.donor_state}` : ""}
                       </p>
                     </div>
                   </div>
@@ -209,28 +194,30 @@ const NearbyDonations = () => {
                   {/* Distance Information */}
                   <div className="border-t pt-3">
                     <p className="text-sm text-muted-foreground">Willing to Travel</p>
-                    <p className="font-semibold">{selectedDonor.willing_distance_km} km</p>
+                    <p className="font-semibold">{selectedDonor.willing_distance_km || "Not specified"} km</p>
                   </div>
 
                   {/* Donor Health Info */}
                   <div className="border-t pt-3 space-y-2">
                     <div>
                       <p className="text-sm text-muted-foreground">Age</p>
-                      <p className="font-semibold">{selectedDonor.age} years</p>
+                      <p className="font-semibold">{selectedDonor.age || "Not specified"} years</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Weight</p>
-                      <p className="font-semibold">{selectedDonor.weight} kg</p>
+                      <p className="font-semibold">{selectedDonor.weight || "Not specified"} kg</p>
                     </div>
                   </div>
 
                   {/* Last Donation */}
-                  {selectedDonor.last_donation_date && (
-                    <div className="border-t pt-3">
-                      <p className="text-sm text-muted-foreground">Last Donation</p>
-                      <p className="font-semibold">{new Date(selectedDonor.last_donation_date).toLocaleDateString()}</p>
-                    </div>
-                  )}
+                  <div className="border-t pt-3">
+                    <p className="text-sm text-muted-foreground">Last Donation</p>
+                    <p className="font-semibold">
+                      {selectedDonor.last_donation_date 
+                        ? new Date(selectedDonor.last_donation_date).toLocaleDateString() 
+                        : "Not specified"}
+                    </p>
+                  </div>
 
                   {/* Status */}
                   {selectedDonor.availability_status && (

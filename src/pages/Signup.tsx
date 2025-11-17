@@ -76,6 +76,15 @@ const Signup = () => {
 
       if (error) throw error;
 
+      // Save profile to localStorage immediately
+      const profileData = {
+        full_name: `${firstName} ${lastName}`.trim(),
+        email,
+        phone,
+      };
+      localStorage.setItem("user_profile", JSON.stringify(profileData));
+      window.dispatchEvent(new Event("profileUpdated"));
+
       toast({
         title: "Account created successfully!",
         description: "Redirecting to get started...",
