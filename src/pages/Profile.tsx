@@ -119,19 +119,24 @@ const Profile = () => {
     setSaving(true);
     try {
       const payload: any = {
-        id: user.id,
-        full_name: fullName,
-        phone: phone,
-        blood_group: bloodGroup,
-        gender: gender,
-        age: ageNum,
-        address: address,
-        city: city,
-        state: state,
-        zip_code: zipCode,
-        weight: weightNum,
-        medical_conditions: medicalConditions,
-      };
+      id: user.id,
+      email: user.email,          // <<--- make sure email is included (NOT NULL)
+      full_name: fullName,
+      phone: phone,
+      blood_group: bloodGroup,
+      gender: gender,
+      age: ageNum,
+      address: address,
+      city: city,
+      state: state,
+      zip_code: zipCode,
+      weight: weightNum,
+      medical_conditions: medicalConditions,
+    };
+     // debug: inspect what we will send
+    console.log('profile payload', payload);
+
+    
 
       // Upsert profile
       const { error } = await supabase.from('profiles').upsert(payload);
