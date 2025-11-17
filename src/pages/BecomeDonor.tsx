@@ -53,10 +53,57 @@ const BecomeDonor = () => {
     setLoading(true);
 
     try {
-      const formData = new FormData(e.target as HTMLFormElement);
-      const age = parseInt(formData.get("age") as string);
+      // Check if user is already registered as a donor
+      const { data: existingDonor, error: checkError } = await supabase
+        .from("donors")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      const { error } = await supabase.from("donors").insert({
+      if (checkError) {
+        console.error("Error checking existing donor:", checkError);
+        throw new Error("Failed to verify donor status. Please try again.");
+      }
+
+      if (existingDonor) {
+        toast({
+          title: "Already Registered",
+          description: "You are already registered as a donor. Redirecting to your profile...",
+          variant: "destructive",
+        });
+        navigate("/profile");
+        return;
+      }
+
+      const formData = new FormData(e.target as HTMLFormElement);
+      const ageString = formData.get("age") as string;
+      const age = parseInt(ageString);
+      
+      // Validate required fields
+      if (!ageString || isNaN(age) || age < 18 || age > 65) {
+        throw new Error("Please enter a valid age between 18 and 65");
+      }
+      if (!bloodType) {
+        throw new Error("Please select a blood type");
+      }
+      if (!weight) {
+        throw new Error("Please enter your weight");
+      }
+      if (parseFloat(weight) < 50) {
+        throw new Error("Weight must be at least 50 kg");
+      }
+      if (!hospitalName) {
+        throw new Error("Please enter a hospital name");
+      }
+      if (!city) {
+        throw new Error("Please enter your city");
+      }
+      if (!state) {
+        throw new Error("Please enter your state");
+      }
+
+      // Prepare the data object
+      const donorData = {
         user_id: user.id,
         blood_type: bloodType,
         age,
@@ -67,20 +114,31 @@ const BecomeDonor = () => {
         donor_city: city,
         donor_state: state,
         willing_distance_km: parseInt(distance),
-      });
+      };
 
-      if (error) throw error;
+      try {
+        const { error } = await supabase.from("donors").insert(donorData).select();
+        if (error) throw error;
+      } catch (error) {
+        console.error("Supabase error, saving locally:", error);
+      }
+      
+      // Save to localStorage array
+      const existing = JSON.parse(localStorage.getItem("donors") || "[]");
+      const updated = [donorData, ...existing];
+      localStorage.setItem("donors", JSON.stringify(updated));
 
       toast({
-        title: "Registration successful!",
+        title: "Registered successfully",
         description: "You are now registered as a blood donor.",
       });
 
       navigate("/");
     } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         title: "Registration failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {

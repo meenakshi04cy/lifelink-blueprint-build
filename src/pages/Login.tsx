@@ -29,6 +29,32 @@ const Login = () => {
 
       if (error) throw error;
 
+      // Save user profile to localStorage immediately using auth metadata
+      if (data.user) {
+        const profileData = {
+          full_name: data.user.user_metadata?.full_name || "",
+          email: data.user.email || email,
+          phone: data.user.user_metadata?.phone || "",
+        };
+        
+        localStorage.setItem("user_profile", JSON.stringify(profileData));
+        window.dispatchEvent(new Event("profileUpdated"));
+        
+        // Try to fetch full profile from Supabase in background
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              localStorage.setItem("user_profile", JSON.stringify(profile));
+              window.dispatchEvent(new Event("profileUpdated"));
+            }
+          })
+          .catch(err => console.warn("Could not load full profile:", err));
+      }
+
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",

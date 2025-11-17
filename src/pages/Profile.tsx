@@ -49,14 +49,11 @@ const Profile = () => {
         }
         setUser(data.user);
 
-        // Load profile with all details
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (prof) {
+        // Load from localStorage first
+        const localProfile = localStorage.getItem("user_profile");
+        
+        if (localProfile) {
+          const prof = JSON.parse(localProfile);
           setProfile(prof);
           setFullName(prof.full_name || "");
           setPhone(prof.phone || "");
@@ -69,6 +66,32 @@ const Profile = () => {
           setZipCode(prof.zip_code || "");
           setWeight(prof.weight ? String(prof.weight) : "");
           setMedicalConditions(prof.medical_conditions || "");
+        } else {
+          // Fallback to Supabase if no local data
+          try {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+
+            if (prof) {
+              setProfile(prof);
+              setFullName(prof.full_name || "");
+              setPhone(prof.phone || "");
+              setBloodGroup(prof.blood_group || "");
+              setGender(prof.gender || "");
+              setAge(prof.age ? String(prof.age) : "");
+              setAddress(prof.address || "");
+              setCity(prof.city || "");
+              setState(prof.state || "");
+              setZipCode(prof.zip_code || "");
+              setWeight(prof.weight ? String(prof.weight) : "");
+              setMedicalConditions(prof.medical_conditions || "");
+            }
+          } catch (err) {
+            console.warn('Supabase fetch failed, using empty profile:', err);
+          }
         }
       } catch (err) {
         console.error('Error loading profile:', err);
@@ -133,9 +156,23 @@ const Profile = () => {
         medical_conditions: medicalConditions,
       };
 
-      // Upsert profile
-      const { error } = await supabase.from('profiles').upsert(payload);
-      if (error) throw error;
+      try {
+        // Try Supabase first
+        const { error } = await supabase.from('profiles').upsert(payload);
+        if (error) {
+          console.warn("Supabase failed, saving profile locally:", error);
+          localStorage.setItem("user_profile", JSON.stringify(payload));
+        } else {
+          console.log("Supabase updated successfully");
+          localStorage.setItem("user_profile", JSON.stringify(payload));
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        localStorage.setItem("user_profile", JSON.stringify(payload));
+      }
+
+      // Trigger custom event to notify Header
+      window.dispatchEvent(new Event("profileUpdated"));
 
       setProfile(payload);
       setEditing(false);

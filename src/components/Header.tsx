@@ -7,8 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -36,8 +36,44 @@ export const Header = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const stored = localStorage.getItem("user_profile");
+    if (stored) {
+      try {
+        const profile = JSON.parse(stored);
+        setUserName(profile.full_name || profile.name || "");
+      } catch (err) {
+        console.error("Error parsing user profile:", err);
+      }
+    }
+
+    // Listen for localStorage changes
+    const handleStorageChange = () => {
+      const stored = localStorage.getItem("user_profile");
+      if (stored) {
+        try {
+          const profile = JSON.parse(stored);
+          setUserName(profile.full_name || profile.name || "");
+        } catch (err) {
+          console.error("Error parsing user profile:", err);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    // Custom event for same-tab updates
+    window.addEventListener("profileUpdated", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("profileUpdated", handleStorageChange);
+    };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("user_profile");
+    setUserName("");
   };
 
   return (
@@ -71,6 +107,9 @@ export const Header = () => {
                 <Link to="/profile">
                   <Button variant="ghost">Account</Button>
                 </Link>
+                {userName && (
+                  <span className="font-semibold text-primary">{userName}</span>
+                )}
                 <Button variant="outline" onClick={handleLogout}>Logout</Button>
               </>
             )}
@@ -116,6 +155,9 @@ export const Header = () => {
                 <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="ghost" className="w-full">Account</Button>
                 </Link>
+                {userName && (
+                  <span className="font-semibold text-primary px-2">{userName}</span>
+                )}
                 <Button variant="outline" className="w-full" onClick={() => { setIsMenuOpen(false); handleLogout(); }}>Logout</Button>
               </>
             )}
