@@ -1,10 +1,6 @@
-# Welcome to your Lovable project
+# LifeLink - Blood Donation Platform
 
-## Project info
-
-**URL**: https://lovable.dev/projects/133deea3-3504-4cf7-9343-0335026aedc5
-
-## How can I edit this code?
+## How to run this project
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
