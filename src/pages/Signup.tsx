@@ -41,36 +41,38 @@ const Signup = () => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
     if (!firstName.trim()) newErrors.firstName = "First name is required";
     if (!email.trim()) newErrors.email = "Email is required";
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) newErrors.email = "Invalid email format";
     if (!phone.trim()) newErrors.phone = "Phone number is required";
     if (password.length < 8) newErrors.password = "Password must be at least 8 characters";
     if (password !== confirmPassword) newErrors.confirmPassword = "Passwords don't match";
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setLoading(true);
 
+    // Corrected the template literal usage:
+    // 1. `full_name`: Use string concatenation or a template literal for the value.
+    // 2. `emailRedirectTo`: Use a template literal to construct the URL string.
+    const fullName = `${firstName} ${lastName}`.trim();
+    const redirectUrl = `${window.location.origin}/get-started`;
+
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: `${firstName} ${lastName}`.trim(),
+            full_name: fullName, // Use the constructed variable
             phone,
             user_type: "general",
           },
-          emailRedirectTo: `${window.location.origin}/get-started`,
+          emailRedirectTo: redirectUrl, // Use the constructed variable
         },
       });
 
@@ -80,7 +82,6 @@ const Signup = () => {
         title: "Account created successfully!",
         description: "Redirecting to get started...",
       });
-
       navigate("/get-started");
     } catch (error: any) {
       toast({
@@ -164,7 +165,6 @@ const Signup = () => {
                     </div>
                   </div>
                 </div>
-
                 {/* Name Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -199,7 +199,6 @@ const Signup = () => {
                     />
                   </div>
                 </div>
-
                 {/* Email Field */}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="font-semibold">
@@ -216,11 +215,8 @@ const Signup = () => {
                     }}
                     className={errors.email ? "border-red-500" : ""}
                   />
-                  {errors.email && (
-                    <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-                  )}
+                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                 </div>
-
                 {/* Phone Field */}
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="font-semibold">
@@ -237,11 +233,8 @@ const Signup = () => {
                     }}
                     className={errors.phone ? "border-red-500" : ""}
                   />
-                  {errors.phone && (
-                    <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
-                  )}
+                  {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                 </div>
-
                 {/* Password Field */}
                 <div className="space-y-2">
                   <Label htmlFor="password" className="font-semibold">
@@ -276,12 +269,17 @@ const Signup = () => {
                           />
                         ))}
                       </div>
-                      <p className={`text-xs font-medium ${
-                        passwordStrength <= 1 ? "text-red-500" :
-                        passwordStrength === 2 ? "text-yellow-600" :
-                        passwordStrength === 3 ? "text-blue-600" :
-                        "text-green-600"
-                      }`}>
+                      <p
+                        className={`text-xs font-medium ${
+                          passwordStrength <= 1
+                            ? "text-red-500"
+                            : passwordStrength === 2
+                            ? "text-yellow-600"
+                            : passwordStrength === 3
+                            ? "text-blue-600"
+                            : "text-green-600"
+                        }`}
+                      >
                         Password strength: {getPasswordStrengthText()}
                       </p>
                     </div>
@@ -290,7 +288,6 @@ const Signup = () => {
                     <p className="text-xs text-red-500 mt-1">{errors.password}</p>
                   )}
                 </div>
-
                 {/* Confirm Password Field */}
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword" className="font-semibold">
@@ -311,7 +308,6 @@ const Signup = () => {
                     <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
                   )}
                 </div>
-
                 {/* Submit Button */}
                 <Button
                   type="submit"
@@ -320,7 +316,6 @@ const Signup = () => {
                 >
                   {loading ? "Creating Account..." : "Create Account"}
                 </Button>
-
                 {/* Hospital Staff Option */}
                 <div className="text-center pt-2">
                   <p className="text-sm text-slate-600 mb-2">Registering as Hospital Staff?</p>
@@ -332,11 +327,13 @@ const Signup = () => {
                   </Link>
                 </div>
               </form>
-
               {/* Login Link */}
               <div className="mt-8 pt-6 border-t border-slate-200 text-center text-sm">
                 <span className="text-slate-600">Already have an account? </span>
-                <Link to="/login" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+                <Link
+                  to="/login"
+                  className="text-primary hover:text-primary/80 font-semibold transition-colors"
+                >
                   Sign in here
                 </Link>
               </div>

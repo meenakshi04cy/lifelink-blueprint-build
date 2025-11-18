@@ -26,6 +26,9 @@ import HospitalRegister from "./pages/HospitalRegister";
 import HospitalRegisterSuccess from "./pages/HospitalRegisterSuccess";
 import AdminHospitalsPending from "./pages/AdminHospitalsPending";
 
+
+
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -56,6 +59,8 @@ const App = () => (
           <Route path="/nearby-donations" element={<NearbyDonations />} />
           <Route path="/request-history" element={<RequestHistory />} />
           <Route path="/profile" element={<Profile />} />
+          
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
