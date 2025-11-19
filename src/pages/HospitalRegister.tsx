@@ -1,3 +1,4 @@
+// src/pages/hospital/HospitalRegister.tsx
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -11,7 +12,12 @@ import { Building2, Upload, Check, AlertCircle, ArrowLeft, MapPin } from 'lucide
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import OTPVerification from '@/components/OTPVerification';
-import { registerHospital, uploadFile } from '@/lib/mockApi.hospital';
+import { supabase } from '@/integrations/supabase/client';
+
+// cast to any to avoid TypeScript errors for tables not in generated types yet
+const sb = supabase as any;
+
+const BUCKET = 'hospital-documents'; // ensure this bucket exists in Supabase storage
 
 const HospitalRegister = () => {
   const [step, setStep] = useState(1);
@@ -39,8 +45,8 @@ const HospitalRegister = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
-  const [latitude, setLatitude] = useState<number>();
-  const [longitude, setLongitude] = useState<number>();
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
 
   // Step 3: Documents
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
@@ -99,7 +105,42 @@ const HospitalRegister = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle file uploads
+  // helper: create unique path
+  const makePath = (fileName: string) => {
+    const ts = Date.now();
+    // sanitize file name a bit
+    const safeName = fileName.replace(/[^a-z0-9.\-_]/gi, '_');
+    return `applications/${ts}_${safeName}`;
+  };
+
+  // Upload to Supabase storage and create signed URL for preview
+  const uploadToStorage = async (file: File, folderPath?: string) => {
+    if (!file) throw new Error('No file provided');
+    const path = folderPath ? `${folderPath}/${file.name}` : makePath(file.name);
+    try {
+      // upload
+      const uploadRes = await sb.storage.from(BUCKET).upload(path, file, { upsert: false });
+      if (uploadRes?.error) throw uploadRes.error;
+
+      // create signed url valid for 1 hour
+      const signed = await sb.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+      const signedUrl = signed?.data?.signedUrl ?? signed?.signedURL ?? null;
+
+      // fallback: try getPublicUrl if createSignedUrl returned nothing
+      if (!signedUrl) {
+        const pub = await sb.storage.from(BUCKET).getPublicUrl(path);
+        const pubUrl = pub?.data?.publicUrl ?? pub?.data?.publicURL ?? null;
+        return { path, url: pubUrl };
+      }
+
+      return { path, url: signedUrl };
+    } catch (err) {
+      console.error('Storage upload error', err);
+      throw err;
+    }
+  };
+
+  // Handle file uploads (UI)
   const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     type: 'license' | 'proof'
@@ -121,8 +162,8 @@ const HospitalRegister = () => {
       setLicenseFile(file);
       setLicenseFileName(file.name);
       try {
-        const url = await uploadFile(file, 'license');
-        setLicenseDocUrl(url);
+        const res = await uploadToStorage(file, 'licenses');
+        setLicenseDocUrl(res.url || '');
         setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors.license;
@@ -134,6 +175,7 @@ const HospitalRegister = () => {
         });
       } catch (err: any) {
         setErrors((prev) => ({ ...prev, license: 'Upload failed' }));
+        toast({ title: 'Upload failed', description: err?.message ?? 'Could not upload file', variant: 'destructive' });
       } finally {
         setUploadingLicense(false);
       }
@@ -142,14 +184,20 @@ const HospitalRegister = () => {
       setProofFile(file);
       setProofFileName(file.name);
       try {
-        const url = await uploadFile(file, 'proof');
-        setProofDocUrl(url);
+        const res = await uploadToStorage(file, 'proofs');
+        setProofDocUrl(res.url || '');
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.proof;
+          return newErrors;
+        });
         toast({
           title: 'Proof document uploaded',
           description: file.name,
         });
       } catch (err: any) {
         setErrors((prev) => ({ ...prev, proof: 'Upload failed' }));
+        toast({ title: 'Upload failed', description: err?.message ?? 'Could not upload file', variant: 'destructive' });
       } finally {
         setUploadingProof(false);
       }
@@ -165,18 +213,44 @@ const HospitalRegister = () => {
       setStep(3);
       setErrors({});
     } else if (step === 3 && validateStep3()) {
-      handleSubmit();
+      setStep(4);
     }
   };
 
-  // Submit registration
+  // Submit registration to `hospital_applications` (NO account created yet)
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const hospitalId = await registerHospital({
-        userId: 'current-user-id', // In production, get from auth
-        name: hospitalName,
-        type: hospitalType as any,
+      // NOTE: Hospital can submit WITHOUT authentication
+      // Account will be created ONLY after admin approval
+      
+      const documents = [];
+      if (licenseDocUrl) {
+        documents.push({
+          kind: 'license',
+          url: licenseDocUrl,
+          fileName: licenseFileName || null,
+          path: licenseFile?.name || null,
+        });
+      }
+      if (proofDocUrl) {
+        documents.push({
+          kind: 'proof',
+          url: proofDocUrl,
+          fileName: proofFileName || null,
+          path: proofFile?.name || null,
+        });
+      }
+
+      const applicationData = {
+        user_id: null, // NOT authenticated yet - account created on approval
+        firstName,
+        lastName,
+        role,
+        phone,
+        email,
+        hospitalName,
+        hospitalType,
         officialPhone,
         emergencyNumber,
         address,
@@ -185,21 +259,28 @@ const HospitalRegister = () => {
         zipCode,
         latitude,
         longitude,
-        licenseDocumentUrl: licenseDocUrl,
-        hospitalProofDocumentUrl: proofDocUrl,
-      });
+        authMethod,
+        licenseDocUrl,
+        proofDocUrl,
+        documents,
+      };
+
+      // Import the function
+      const { submitHospitalApplication } = await import('@/lib/supabase-hospitals');
+      const inserted = await submitHospitalApplication(applicationData);
 
       toast({
         title: 'Registration Submitted',
-        description: 'Your application is pending verification.',
+        description: 'Your application is pending verification. We will review your documents and contact you soon.',
       });
 
-      navigate(`/hospital/register/success?hospitalId=${hospitalId}`);
+      navigate(`/hospital/register/success${inserted?.id ? `?applicationId=${inserted.id}` : ''}`);
     } catch (err: any) {
-      setErrors({ submit: err.message || 'Registration failed' });
+      console.error('Registration failed', err);
+      setErrors({ submit: err?.message ?? 'Registration failed' });
       toast({
         title: 'Registration Failed',
-        description: err.message,
+        description: err?.message ?? 'Could not submit application',
         variant: 'destructive',
       });
     } finally {

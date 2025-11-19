@@ -9,6 +9,7 @@ export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -17,7 +18,12 @@ export const Header = () => {
       try {
         const { data } = await supabase.auth.getUser();
         if (!mounted) return;
-        setIsAuthenticated(!!data.user);
+        const isAuth = !!data.user;
+        setIsAuthenticated(isAuth);
+        
+        // Check if user is admin
+        const isAdminUser = data.user?.user_metadata?.user_type === 'admin';
+        setIsAdmin(isAdminUser);
       } catch (err) {
         console.error("Error checking auth state:", err);
       }
@@ -27,7 +33,10 @@ export const Header = () => {
 
     // Listen to auth state changes (login/logout)
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setIsAuthenticated(!!session?.user);
+      const isAdminUser = session?.user?.user_metadata?.user_type === 'admin';
+      setIsAdmin(isAdminUser);
     });
 
     return () => {
@@ -57,6 +66,11 @@ export const Header = () => {
             <Link to="/about" className="text-foreground hover:text-primary transition-colors">
               About
             </Link>
+            {isAdmin && (
+              <Link to="/admin/hospitals/pending" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                <span>🔐</span> Admin
+              </Link>
+            )}
             {!isAuthenticated ? (
               <>
                 <Link to="/login">
@@ -102,6 +116,15 @@ export const Header = () => {
             >
               About
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin/hospitals/pending"
+                className="text-foreground hover:text-primary transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                🔐 Admin Dashboard
+              </Link>
+            )}
             {!isAuthenticated ? (
               <>
                 <Link to="/login" onClick={() => setIsMenuOpen(false)}>

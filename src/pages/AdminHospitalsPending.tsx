@@ -1,5 +1,6 @@
 // src/pages/admin/AdminHospitalsPending.tsx
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { getDocSignedUrl } from "@/lib/supabase-hospitals";
+
 import {
   Select,
   SelectContent,
@@ -49,6 +52,7 @@ export default function AdminHospitalsPending() {
   const [hospitals, setHospitals] = useState<AppRow[]>([]);
   const [filteredHospitals, setFilteredHospitals] = useState<AppRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "all">(
     "pending"
@@ -62,7 +66,36 @@ export default function AdminHospitalsPending() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadHospitals();
+    const checkAdmin = async () => {
+      try {
+        const { data } = await sb.auth.getUser();
+        if (data?.user) {
+          // Check if user is admin
+          const userMetadata = data.user.user_metadata;
+          const isAdminUser = userMetadata?.user_type === 'admin';
+          
+          console.log("👤 User email:", data.user.email);
+          console.log("📝 User metadata:", userMetadata);
+          console.log("🔐 Is admin:", isAdminUser);
+          
+          if (isAdminUser) {
+            setIsAdmin(true);
+            loadHospitals();
+          } else {
+            setIsAdmin(false);
+            setLoading(false);
+          }
+        } else {
+          setIsAdmin(false);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error checking admin status:", err);
+        setIsAdmin(false);
+        setLoading(false);
+      }
+    };
+    checkAdmin();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
@@ -100,7 +133,18 @@ export default function AdminHospitalsPending() {
       query = query.order("created_at", { ascending: false });
 
       const res = await query;
-      if (res.error) throw res.error;
+      
+      // If we get permission denied, try to show helpful message
+      if (res.error) {
+        console.error("Error details:", res.error);
+        if (res.error.message.includes("permission")) {
+          throw new Error(
+            "Permission denied. Make sure: 1) You are logged in as admin 2) The hospital_applications table exists in your Supabase database 3) RLS policies are configured correctly."
+          );
+        }
+        throw res.error;
+      }
+      
       const data = res.data as AppRow[];
       setHospitals(data || []);
       setFilteredHospitals(data || []);
@@ -202,9 +246,25 @@ export default function AdminHospitalsPending() {
       if (reviewAction === "approve") updatePayload.verified_at = new Date().toISOString();
       if (adminId) updatePayload.verified_by = adminId;
       if (reviewAction === "reject") updatePayload.rejection_reason = reviewNotes;
+      if (reviewAction === "reject") updatePayload.rejection_date = new Date().toISOString();
 
       const upd = await sb.from("hospital_applications").update(updatePayload).eq("id", selectedHospital.id);
       if (upd?.error) throw upd.error;
+
+      // If approving, create a hospital record
+      if (reviewAction === "approve") {
+        try {
+          const { createHospitalFromApplication } = await import("@/lib/supabase-hospitals");
+          await createHospitalFromApplication(selectedHospital.id, adminId || undefined);
+        } catch (e) {
+          console.error("Failed to create hospital from application", e);
+          toast({
+            title: "Warning",
+            description: "Application approved but hospital record creation failed. Please create manually.",
+            variant: "destructive",
+          });
+        }
+      }
 
       // attempt to insert audit row (non-fatal)
       try {
@@ -213,6 +273,7 @@ export default function AdminHospitalsPending() {
           action: reviewAction === "approve" ? "approved" : reviewAction === "reject" ? "rejected" : "info_requested",
           notes: reviewNotes,
           actor_id: adminId,
+          new_status: newStatus,
           created_at: new Date().toISOString(),
         };
         const auditInsert = await sb.from("hospital_application_audit").insert([auditRow]);
@@ -232,7 +293,7 @@ export default function AdminHospitalsPending() {
             : "Requested More Info",
         description:
           reviewAction === "approve"
-            ? `${selectedHospital.hospital_name || selectedHospital.name} has been approved.`
+            ? `${selectedHospital.hospital_name || selectedHospital.name} has been approved and registered.`
             : reviewAction === "reject"
             ? `${selectedHospital.hospital_name || selectedHospital.name} was rejected.`
             : "Hospital asked to submit additional information.",
@@ -255,6 +316,30 @@ export default function AdminHospitalsPending() {
       setSubmitting(false);
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <main className="flex-1 py-8 px-4">
+          <div className="container mx-auto max-w-6xl">
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader>
+                <CardTitle className="text-red-700">Access Denied</CardTitle>
+              </CardHeader>
+              <CardContent className="text-red-600">
+                <p className="mb-4">You must be logged in to access the admin dashboard.</p>
+                <Link to="/login">
+                  <Button variant="outline">Go to Login</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -441,9 +526,42 @@ export default function AdminHospitalsPending() {
                                     size="sm"
                                     variant="outline"
                                     onClick={async () => {
-                                      const url = await docUrl(d);
-                                      if (url) window.open(url, "_blank", "noopener");
-                                      else toast({ title: "No preview", description: "Document not publicly available", variant: "destructive" });
+                                      try {
+                                        // 1) Prefer signed URL for private buckets (admin preview)
+                                        if (d?.bucket && d?.path) {
+                                          const signed = await getDocSignedUrl(d.bucket, d.path, 60 * 60);
+                                          if (signed) {
+                                            window.open(signed, "_blank", "noopener,noreferrer");
+                                            return;
+                                          }
+                                        }
+
+                                        // 2) If doc has a direct url property, open it
+                                        if (d?.url) {
+                                          window.open(d.url, "_blank", "noopener,noreferrer");
+                                          return;
+                                        }
+
+                                        // 3) fallback to docUrl helper which tries publicUrl / createSignedUrl with SDK shapes
+                                        const fallback = await docUrl(d);
+                                        if (fallback) {
+                                          window.open(fallback, "_blank", "noopener,noreferrer");
+                                          return;
+                                        }
+
+                                        toast({
+                                          title: "No preview",
+                                          description: "Document not publicly available",
+                                          variant: "destructive",
+                                        });
+                                      } catch (err: any) {
+                                        console.error("Error opening document preview", err);
+                                        toast({
+                                          title: "Preview failed",
+                                          description: err?.message ?? "Could not open document",
+                                          variant: "destructive",
+                                        });
+                                      }
                                     }}
                                   >
                                     View

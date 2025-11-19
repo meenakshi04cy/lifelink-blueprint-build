@@ -2,12 +2,81 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, Clock, FileText, Home } from 'lucide-react';
+import { CheckCircle, Clock, FileText, Home, RefreshCw } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const HospitalRegisterSuccess = () => {
   const [searchParams] = useSearchParams();
-  const hospitalId = searchParams.get('hospitalId');
+  const applicationId = searchParams.get('applicationId');
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [applicationData, setApplicationData] = useState<any>(null);
+  const { toast } = useToast();
+  const sb = supabase as any;
+
+  useEffect(() => {
+    if (applicationId) {
+      loadApplicationStatus();
+    }
+  }, [applicationId]);
+
+  const loadApplicationStatus = async () => {
+    if (!applicationId) return;
+    setLoading(true);
+    try {
+      const { data, error } = await sb
+        .from('hospital_applications')
+        .select('*')
+        .eq('id', applicationId)
+        .single();
+
+      if (error) throw error;
+      setApplicationData(data);
+      setApplicationStatus(data.status);
+    } catch (err: any) {
+      console.error('Failed to load application status', err);
+      toast({
+        title: 'Error',
+        description: 'Could not load application status',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-amber-50 border-amber-200 text-amber-900';
+      case 'approved':
+        return 'bg-green-50 border-green-200 text-green-900';
+      case 'rejected':
+        return 'bg-red-50 border-red-200 text-red-900';
+      case 'info_requested':
+        return 'bg-blue-50 border-blue-200 text-blue-900';
+      default:
+        return 'bg-gray-50 border-gray-200 text-gray-900';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Clock className="w-5 h-5 text-amber-600" />;
+      case 'approved':
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'rejected':
+        return <CheckCircle className="w-5 h-5 text-red-600" />;
+      case 'info_requested':
+        return <FileText className="w-5 h-5 text-blue-600" />;
+      default:
+        return <Clock className="w-5 h-5 text-gray-600" />;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 to-slate-100">
@@ -34,15 +103,43 @@ const HospitalRegisterSuccess = () => {
               </div>
 
               {/* Application ID */}
-              {hospitalId && (
+              {applicationId && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <p className="text-xs text-gray-600 mb-1">Application ID</p>
                   <p className="font-mono text-sm font-semibold text-green-900 break-all">
-                    {hospitalId}
+                    {applicationId}
                   </p>
                   <p className="text-xs text-gray-600 mt-2">
                     Save this ID for reference. You'll need it to check status or resubmit documents.
                   </p>
+                </div>
+              )}
+
+              {/* Current Status */}
+              {applicationData && (
+                <div className={`border rounded-lg p-4 space-y-2 ${getStatusColor(applicationStatus || '')}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    {getStatusIcon(applicationStatus || '')}
+                    <p className="font-semibold capitalize">
+                      Status: {applicationStatus?.replace('_', ' ')}
+                    </p>
+                  </div>
+                  {applicationStatus === 'approved' && (
+                    <p className="text-xs">
+                      Congratulations! Your hospital has been verified and registered.
+                    </p>
+                  )}
+                  {applicationStatus === 'rejected' && (
+                    <div>
+                      <p className="text-xs mb-2">Reason for rejection:</p>
+                      <p className="text-xs font-semibold">{applicationData.rejection_reason || 'See details for more information'}</p>
+                    </div>
+                  )}
+                  {applicationStatus === 'info_requested' && (
+                    <p className="text-xs">
+                      Please provide the requested information to continue with the verification.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -76,7 +173,7 @@ const HospitalRegisterSuccess = () => {
                     <div className="text-left">
                       <p className="font-semibold text-sm text-gray-900">Email Notification</p>
                       <p className="text-xs text-gray-600 mt-1">
-                        You'll receive an email at {/* TODO: show email */} with the verification decision.
+                        You'll receive an email with the verification decision at {applicationData?.representative_email || 'your registered email'}.
                       </p>
                     </div>
                   </div>
@@ -98,17 +195,19 @@ const HospitalRegisterSuccess = () => {
                 </div>
               </div>
 
-              {/* Status Card */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="w-5 h-5 text-amber-600" />
-                  <p className="font-semibold text-amber-900">Verification Status: Pending</p>
+              {/* Status Card - Only show if not yet loaded */}
+              {!applicationData && applicationId && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <p className="font-semibold text-amber-900">Verification Status: Pending</p>
+                  </div>
+                  <p className="text-xs text-amber-800">
+                    Your hospital is currently in the verification queue. This status will be updated to
+                    "Verified" once our team completes the review.
+                  </p>
                 </div>
-                <p className="text-xs text-amber-800">
-                  Your hospital is currently in the verification queue. This status will be updated to
-                  "Verified" once our team completes the review.
-                </p>
-              </div>
+              )}
 
               {/* Important Notes */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
@@ -134,11 +233,18 @@ const HospitalRegisterSuccess = () => {
                     Go to Home
                   </Button>
                 </Link>
-                <Link to={`/hospital/${hospitalId}/edit`}>
-                  <Button className="w-full" size="lg" variant="outline">
-                    Check Application Status
+                {applicationId && (
+                  <Button
+                    onClick={loadApplicationStatus}
+                    disabled={loading}
+                    className="w-full"
+                    size="lg"
+                    variant="outline"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Checking Status...' : 'Check Status'}
                   </Button>
-                </Link>
+                )}
               </div>
 
               {/* FAQ */}
