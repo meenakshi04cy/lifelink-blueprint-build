@@ -67,9 +67,12 @@ export const Header = () => {
               About
             </Link>
             {isAdmin && (
-              <Link to="/admin/hospitals/pending" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
-                <span>🔐</span> Admin
-              </Link>
+              <>
+                <Link to="/admin/hospitals/pending" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                  <span>🔐</span> Admin
+                </Link>
+
+              </>
             )}
             {!isAuthenticated ? (
               <>
@@ -117,13 +120,15 @@ export const Header = () => {
               About
             </Link>
             {isAdmin && (
-              <Link
-                to="/admin/hospitals/pending"
-                className="text-foreground hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                🔐 Admin Dashboard
-              </Link>
+              <>
+                <Link
+                  to="/admin/hospitals/pending"
+                  className="text-foreground hover:text-primary transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  🔐 Admin Dashboard
+                </Link>
+              </>
             )}
             {!isAuthenticated ? (
               <>

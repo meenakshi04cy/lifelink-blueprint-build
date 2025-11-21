@@ -1,5 +1,5 @@
 // src/pages/hospital/HospitalRegister.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Upload, Check, AlertCircle, ArrowLeft, MapPin } from 'lucide-react';
+import { Building2, Upload, AlertCircle, ArrowLeft, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import OTPVerification from '@/components/OTPVerification';
 import { supabase } from '@/integrations/supabase/client';
 
 // cast to any to avoid TypeScript errors for tables not in generated types yet
@@ -25,16 +24,19 @@ const HospitalRegister = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // DEBUG: Page loaded
+  useEffect(() => {
+    console.log("🟢 HospitalRegister component mounted");
+  }, []);
+
   // Step 1: Representative Info
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
   const [phone, setPhone] = useState('');
-  const [phoneVerified, setPhoneVerified] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [authMethod, setAuthMethod] = useState('password'); // 'password' or 'otp-only'
 
   // Step 2: Hospital Info
   const [hospitalName, setHospitalName] = useState('');
@@ -45,18 +47,22 @@ const HospitalRegister = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
-  const [latitude, setLatitude] = useState<number | undefined>();
-  const [longitude, setLongitude] = useState<number | undefined>();
 
   // Step 3: Documents
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [licenseFileName, setLicenseFileName] = useState('');
   const [licenseDocUrl, setLicenseDocUrl] = useState('');
+  const [licensePath, setLicensePath] = useState(''); // ADD: Store storage path
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofFileName, setProofFileName] = useState('');
   const [proofDocUrl, setProofDocUrl] = useState('');
+  const [proofPath, setProofPath] = useState(''); // ADD: Store storage path
   const [uploadingLicense, setUploadingLicense] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
+
+  // Step 4: Agreements
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
 
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,14 +73,10 @@ const HospitalRegister = () => {
 
     if (!firstName.trim()) newErrors.firstName = 'First name required';
     if (!role.trim()) newErrors.role = 'Position/role required';
-    if (!phone.trim()) newErrors.phone = 'Phone number required';
-    if (!phoneVerified) newErrors.phoneVerified = 'Phone must be verified';
     if (!email.trim()) newErrors.email = 'Email required';
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) newErrors.email = 'Invalid email';
-    if (authMethod === 'password') {
-      if (password.length < 8) newErrors.password = 'Password must be 8+ characters';
-      if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    }
+    if (password.length < 8) newErrors.password = 'Password must be 8+ characters';
+    if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -99,7 +101,8 @@ const HospitalRegister = () => {
   const validateStep3 = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!licenseDocUrl) newErrors.license = 'License document required';
+    // Documents are now optional - users can submit without uploading files
+    // if (!licenseDocUrl) newErrors.license = 'License document required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -118,9 +121,20 @@ const HospitalRegister = () => {
     if (!file) throw new Error('No file provided');
     const path = folderPath ? `${folderPath}/${file.name}` : makePath(file.name);
     try {
+      console.log("📤 Uploading file to bucket:", BUCKET, "path:", path);
+      
       // upload
       const uploadRes = await sb.storage.from(BUCKET).upload(path, file, { upsert: false });
-      if (uploadRes?.error) throw uploadRes.error;
+      console.log("📤 Upload response:", uploadRes);
+      
+      if (uploadRes?.error) {
+        console.error("❌ Upload error:", uploadRes.error);
+        // If bucket doesn't exist, provide helpful message
+        if (uploadRes.error.message?.includes('Bucket not found')) {
+          throw new Error('Storage bucket "hospital-documents" not configured. Document upload is optional - you can proceed without uploading documents.');
+        }
+        throw uploadRes.error;
+      }
 
       // create signed url valid for 1 hour
       const signed = await sb.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
@@ -135,7 +149,7 @@ const HospitalRegister = () => {
 
       return { path, url: signedUrl };
     } catch (err) {
-      console.error('Storage upload error', err);
+      console.error('❌ Storage upload error', err);
       throw err;
     }
   };
@@ -163,7 +177,9 @@ const HospitalRegister = () => {
       setLicenseFileName(file.name);
       try {
         const res = await uploadToStorage(file, 'licenses');
+        console.log('📄 License upload result:', res);
         setLicenseDocUrl(res.url || '');
+        setLicensePath(res.path || ''); // ADD: Store the path
         setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors.license;
@@ -185,7 +201,9 @@ const HospitalRegister = () => {
       setProofFileName(file.name);
       try {
         const res = await uploadToStorage(file, 'proofs');
+        console.log('📄 Proof upload result:', res);
         setProofDocUrl(res.url || '');
+        setProofPath(res.path || ''); // ADD: Store the path
         setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors.proof;
@@ -219,36 +237,40 @@ const HospitalRegister = () => {
 
   // Submit registration to `hospital_applications` (NO account created yet)
   const handleSubmit = async () => {
-    setLoading(true);
-    try {
-      // NOTE: Hospital can submit WITHOUT authentication
-      // Account will be created ONLY after admin approval
+    console.log("🏥 === ENTRY: handleSubmit called ===");
+    console.log("🏥 Terms agreed:", termsAgreed, "Privacy agreed:", privacyAgreed);
+    
+    // Validate agreements
+    if (!termsAgreed || !privacyAgreed) {
+      console.error("❌ VALIDATION FAILED: Agreements not checked");
+      console.error("Terms:", termsAgreed, "Privacy:", privacyAgreed);
       
-      const documents = [];
-      if (licenseDocUrl) {
-        documents.push({
-          kind: 'license',
-          url: licenseDocUrl,
-          fileName: licenseFileName || null,
-          path: licenseFile?.name || null,
-        });
-      }
-      if (proofDocUrl) {
-        documents.push({
-          kind: 'proof',
-          url: proofDocUrl,
-          fileName: proofFileName || null,
-          path: proofFile?.name || null,
-        });
-      }
-
+      setErrors({ 
+        agreements: 'Please check both agreements before submitting' 
+      });
+      
+      toast({
+        title: 'Agreement Required',
+        description: 'Please check both agreements before submitting',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    console.log("✅ Validation passed, starting submission");
+    setLoading(true);
+    
+    try {
+      console.log("🏥🏥🏥 === START SUBMISSION PROCESS ===");
+      
       const applicationData = {
-        user_id: null, // NOT authenticated yet - account created on approval
         firstName,
         lastName,
         role,
         phone,
         email,
+        password,
+        confirmPassword,
         hospitalName,
         hospitalType,
         officialPhone,
@@ -257,30 +279,55 @@ const HospitalRegister = () => {
         city,
         state,
         zipCode,
-        latitude,
-        longitude,
-        authMethod,
-        licenseDocUrl,
-        proofDocUrl,
-        documents,
+        licenseDocUrl: licenseDocUrl || null,
+        proofDocUrl: proofDocUrl || null,
+        licensePath: licensePath || null,
+        proofPath: proofPath || null,
+        documents: [
+          licenseFileName && { kind: 'license', fileName: licenseFileName, url: licenseDocUrl, path: licensePath },
+          proofFileName && { kind: 'proof', fileName: proofFileName, url: proofDocUrl, path: proofPath }
+        ].filter(Boolean),
       };
 
-      // Import the function
+      console.log("📋 FORM DATA OBJECT:", applicationData);
+      console.log("📋 Firstname:", firstName);
+      console.log("📋 Hospital name:", hospitalName);
+      console.log("📋 City:", city);
+      console.log("📄 License URL:", licenseDocUrl, "Path:", licensePath);
+      console.log("📄 Proof URL:", proofDocUrl, "Path:", proofPath);
+      console.log("📋 Documents array:", applicationData.documents);
+
+      console.log("🔗 About to import submitHospitalApplication...");
+
+      // Import and call
       const { submitHospitalApplication } = await import('@/lib/supabase-hospitals');
-      const inserted = await submitHospitalApplication(applicationData);
+      console.log("🔗 Function imported successfully");
+      console.log("🚀🚀🚀 Calling submitHospitalApplication now...");
+      
+      const result = await submitHospitalApplication(applicationData);
+      
+      console.log("✅✅✅ SUBMISSION SUCCESSFUL!");
+      console.log("✅ Result:", result);
 
       toast({
-        title: 'Registration Submitted',
-        description: 'Your application is pending verification. We will review your documents and contact you soon.',
+        title: 'Registration Submitted Successfully!',
+        description: 'Your hospital registration is under review.'
       });
 
-      navigate(`/hospital/register/success${inserted?.id ? `?applicationId=${inserted.id}` : ''}`);
+      console.log("📍 KEEPING PAGE HERE - Check admin dashboard for new hospital");
+      console.log("📍 DO NOT REDIRECT - You can manually navigate after verifying");
+      
     } catch (err: any) {
-      console.error('Registration failed', err);
-      setErrors({ submit: err?.message ?? 'Registration failed' });
+      console.error('❌❌❌ === SUBMISSION FAILED ===');
+      console.error('❌ Error object:', err);
+      console.error('❌ Error message:', err?.message);
+      console.error('❌ Error code:', err?.code);
+      console.error('❌ Error stack:', err?.stack);
+      
+      setErrors({ submit: err?.message ?? 'Failed to submit' });
       toast({
-        title: 'Registration Failed',
-        description: err?.message ?? 'Could not submit application',
+        title: 'Submission Failed',
+        description: err?.message || 'Could not submit application',
         variant: 'destructive',
       });
     } finally {
@@ -381,7 +428,7 @@ const HospitalRegister = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number (for OTP verification) *</Label>
+                    <Label htmlFor="phone">Phone Number <span className="text-slate-400">(Optional)</span></Label>
                     <Input
                       id="phone"
                       type="tel"
@@ -393,25 +440,10 @@ const HospitalRegister = () => {
                           setErrors({ ...errors, phone: '' });
                         }
                       }}
-                      disabled={phoneVerified}
                       className={errors.phone ? 'border-red-500' : ''}
                     />
                     {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
-                    {phoneVerified && (
-                      <div className="flex items-center gap-2 text-xs text-green-600 mt-1">
-                        <Check className="w-4 h-4" />
-                        Phone verified
-                      </div>
-                    )}
                   </div>
-
-                  {!phoneVerified && phone && (
-                    <OTPVerification
-                      phoneNumber={phone}
-                      onVerified={() => setPhoneVerified(true)}
-                      onBack={() => {}}
-                    />
-                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address *</Label>
@@ -431,81 +463,50 @@ const HospitalRegister = () => {
                     {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
                   </div>
 
-                  <div className="space-y-3 border-t pt-4">
-                    <p className="text-sm font-semibold">Authentication Method</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id="authPassword"
-                          checked={authMethod === 'password'}
-                          onCheckedChange={() => setAuthMethod('password')}
-                        />
-                        <Label htmlFor="authPassword" className="cursor-pointer">
-                          Password-based account
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id="authOtp"
-                          checked={authMethod === 'otp-only'}
-                          onCheckedChange={() => setAuthMethod('otp-only')}
-                        />
-                        <Label htmlFor="authOtp" className="cursor-pointer">
-                          OTP-only login (via verified phone)
-                        </Label>
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errors.password) {
+                          setErrors({ ...errors, password: '' });
+                        }
+                      }}
+                      className={errors.password ? 'border-red-500' : ''}
+                    />
+                    {errors.password && (
+                      <p className="text-xs text-red-500">{errors.password}</p>
+                    )}
                   </div>
 
-                  {authMethod === 'password' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password *</Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => {
-                            setPassword(e.target.value);
-                            if (errors.password) {
-                              setErrors({ ...errors, password: '' });
-                            }
-                          }}
-                          className={errors.password ? 'border-red-500' : ''}
-                        />
-                        {errors.password && (
-                          <p className="text-xs text-red-500">{errors.password}</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                        <Input
-                          id="confirmPassword"
-                          type="password"
-                          placeholder="••••••••"
-                          value={confirmPassword}
-                          onChange={(e) => {
-                            setConfirmPassword(e.target.value);
-                            if (errors.confirmPassword) {
-                              setErrors({ ...errors, confirmPassword: '' });
-                            }
-                          }}
-                          className={errors.confirmPassword ? 'border-red-500' : ''}
-                        />
-                        {errors.confirmPassword && (
-                          <p className="text-xs text-red-500">{errors.confirmPassword}</p>
-                        )}
-                      </div>
-                    </>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (errors.confirmPassword) {
+                          setErrors({ ...errors, confirmPassword: '' });
+                        }
+                      }}
+                      className={errors.confirmPassword ? 'border-red-500' : ''}
+                    />
+                    {errors.confirmPassword && (
+                      <p className="text-xs text-red-500">{errors.confirmPassword}</p>
+                    )}
+                  </div>
 
                   <Button
                     onClick={handleNextStep}
                     className="w-full mt-6"
                     size="lg"
-                    disabled={!phoneVerified}
                   >
                     Continue to Hospital Details
                   </Button>
@@ -657,30 +658,7 @@ const HospitalRegister = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Location Coordinates (Optional)
-                    </Label>
-                    <p className="text-xs text-gray-600">
-                      Latitude: {latitude || 'Not set'} | Longitude: {longitude || 'Not set'}
-                    </p>
-                    <Button
-                      onClick={() => {
-                        // TODO: Integrate with map picker
-                        setLatitude(28.6139);
-                        setLongitude(77.209);
-                        toast({
-                          title: 'Location set',
-                          description: 'New Delhi coordinates',
-                        });
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Pick Location on Map
-                    </Button>
-                  </div>
+
 
                   <div className="flex gap-3">
                     <Button
@@ -827,6 +805,16 @@ const HospitalRegister = () => {
                     </p>
                   </div>
 
+                  {errors.agreements && (
+                    <div className="flex items-start gap-2 bg-red-50 border border-red-200 p-4 rounded">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-900">Agreement Required</p>
+                        <p className="text-xs text-red-800 mt-1">{errors.agreements}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3 bg-gray-50 p-4 rounded">
                       <h4 className="font-semibold text-sm">Representative</h4>
@@ -902,14 +890,26 @@ const HospitalRegister = () => {
 
                   <div className="space-y-3 text-xs">
                     <div className="flex items-start gap-2">
-                      <input type="checkbox" id="terms" className="mt-0.5" required />
+                      <input 
+                        type="checkbox" 
+                        id="terms" 
+                        className="mt-0.5" 
+                        checked={termsAgreed}
+                        onChange={(e) => setTermsAgreed(e.target.checked)}
+                      />
                       <label htmlFor="terms" className="text-gray-700">
                         I confirm that all information provided is accurate and authentic. I understand
                         that false information may result in rejection and legal action.
                       </label>
                     </div>
                     <div className="flex items-start gap-2">
-                      <input type="checkbox" id="privacy" className="mt-0.5" required />
+                      <input 
+                        type="checkbox" 
+                        id="privacy" 
+                        className="mt-0.5" 
+                        checked={privacyAgreed}
+                        onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                      />
                       <label htmlFor="privacy" className="text-gray-700">
                         I have read and agree to the Privacy Policy and Terms of Service.
                       </label>
@@ -927,7 +927,10 @@ const HospitalRegister = () => {
                       Back
                     </Button>
                     <Button
-                      onClick={handleSubmit}
+                      onClick={() => {
+                        console.log("⚡ BUTTON CLICKED DIRECTLY");
+                        handleSubmit();
+                      }}
                       className="flex-1"
                       size="lg"
                       disabled={loading}

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
-import { Heart, Check } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -79,8 +79,8 @@ const Signup = () => {
       if (error) throw error;
 
       toast({
-        title: "Account created successfully!",
-        description: "Redirecting to get started...",
+        title: "Welcome to LifeLink! 🎉",
+        description: "Your account has been created. Let's get you started.",
       });
       navigate("/get-started");
     } catch (error: any) {
@@ -145,25 +145,13 @@ const Signup = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Account Type Selection */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Account Type</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-300">
-                      <Check className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="font-medium text-slate-900">General User</p>
-                        <p className="text-xs text-slate-600">Become a donor and/or request blood anytime</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 text-slate-500">
-                      <div className="w-5 h-5 rounded border border-slate-300 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Hospital Staff</p>
-                        <p className="text-xs">Requires verification (select after signup)</p>
-                      </div>
-                    </div>
-                  </div>
+                {/* Info Box */}
+                <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-slate-700">
+                    <span className="font-semibold text-primary">✓ General User Account</span>
+                    <br />
+                    <span className="text-xs">You can donate blood or request blood after signup</span>
+                  </p>
                 </div>
                 {/* Name Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,7 +308,7 @@ const Signup = () => {
                 <div className="text-center pt-2">
                   <p className="text-sm text-slate-600 mb-2">Registering as Hospital Staff?</p>
                   <Link
-                    to="/signup/hospital"
+                    to="/hospital/register"
                     className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
                   >
                     Go to Hospital Registration →

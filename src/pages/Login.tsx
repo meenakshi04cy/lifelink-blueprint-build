@@ -34,7 +34,15 @@ const Login = () => {
         description: "You have successfully logged in.",
       });
 
-      navigate("/");
+      // Check if user is hospital staff
+      const hospitalId = data.user?.user_metadata?.hospital_id;
+      if (hospitalId) {
+        // Hospital staff - redirect to dashboard
+        navigate("/hospital/dash");
+      } else {
+        // General user - redirect to home
+        navigate("/");
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",

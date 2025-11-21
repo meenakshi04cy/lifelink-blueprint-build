@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import HospitalSignup from "./pages/HospitalSignup";
 import GetStarted from "./pages/GetStarted";
 import HospitalPending from "./pages/HospitalPending";
 import BecomeDonor from "./pages/BecomeDonor";
@@ -19,12 +18,21 @@ import DonationHistory from "./pages/DonationHistory";
 import UpdateRequestStatus from "./pages/UpdateRequestStatus";
 import RequestorVisibility from "./pages/RequestorVisibility";
 import NearbyDonations from "./pages/NearbyDonations";
+import NearbyAvailableDonors from "./pages/NearbyAvailableDonors";
+import NearbyBloodRequests from "./pages/NearbyBloodRequests";
 import RequestHistory from "./pages/RequestHistory";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import HospitalRegister from "./pages/HospitalRegister";
 import HospitalRegisterSuccess from "./pages/HospitalRegisterSuccess";
 import AdminHospitalsPending from "./pages/AdminHospitalsPending";
+import HospitalDashboard from "./pages/HospitalDashboard";
+import HospitalDash from "./pages/HospitalDash";
+import HospitalDonorEligibility from "./pages/HospitalDonorEligibility";
+import HospitalVerifyRequests from "./pages/HospitalVerifyRequests";
+import HospitalRecordDonation from "./pages/HospitalRecordDonation";
+import HospitalComplianceRecords from "./pages/HospitalComplianceRecords";
+
 
 
 
@@ -41,9 +49,14 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/signup/hospital" element={<HospitalSignup />} />
           <Route path="/hospital/register" element={<HospitalRegister />} />
           <Route path="/hospital/register/success" element={<HospitalRegisterSuccess />} />
+          <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
+          <Route path="/hospital/dash" element={<HospitalDash />} />
+          <Route path="/hospital/verify-requests" element={<HospitalVerifyRequests />} />
+          <Route path="/hospital/donor-eligibility" element={<HospitalDonorEligibility />} />
+          <Route path="/hospital/record-donation" element={<HospitalRecordDonation />} />
+          <Route path="/hospital/compliance-records" element={<HospitalComplianceRecords />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/hospital-pending" element={<HospitalPending />} />
           <Route path="/admin/hospitals/pending" element={<AdminHospitalsPending />} />
@@ -57,6 +70,9 @@ const App = () => (
           <Route path="/update-request-status" element={<UpdateRequestStatus />} />
           <Route path="/requestor-visibility" element={<RequestorVisibility />} />
           <Route path="/nearby-donations" element={<NearbyDonations />} />
+          <Route path="/nearby-available-donors" element={<NearbyAvailableDonors />} />
+          <Route path="/nearby-blood-requests" element={<NearbyBloodRequests />} />
+
           <Route path="/request-history" element={<RequestHistory />} />
           <Route path="/profile" element={<Profile />} />
           

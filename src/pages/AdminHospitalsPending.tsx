@@ -65,6 +65,18 @@ export default function AdminHospitalsPending() {
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Auto-refresh hospitals every 10 seconds
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    const interval = setInterval(() => {
+      console.log("🔄 Auto-refreshing hospitals...");
+      loadHospitals();
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [isAdmin]);
+
   useEffect(() => {
     const checkAdmin = async () => {
       try {
@@ -132,7 +144,10 @@ export default function AdminHospitalsPending() {
 
       query = query.order("created_at", { ascending: false });
 
+      console.log("🔍 Loading hospitals with status filter:", statusFilter);
       const res = await query;
+      
+      console.log("📊 Query response - Data count:", res.data?.length, "Error:", res.error);
       
       // If we get permission denied, try to show helpful message
       if (res.error) {
@@ -146,6 +161,7 @@ export default function AdminHospitalsPending() {
       }
       
       const data = res.data as AppRow[];
+      console.log("✅ Successfully loaded", data.length, "hospitals");
       setHospitals(data || []);
       setFilteredHospitals(data || []);
     } catch (err: any) {
@@ -252,17 +268,31 @@ export default function AdminHospitalsPending() {
       if (upd?.error) throw upd.error;
 
       // If approving, create a hospital record
+      let approvalSuccessful = true;
       if (reviewAction === "approve") {
         try {
           const { createHospitalFromApplication } = await import("@/lib/supabase-hospitals");
-          await createHospitalFromApplication(selectedHospital.id, adminId || undefined);
+          const result = await createHospitalFromApplication(selectedHospital.id, adminId || undefined);
+          
+          // Show success with hospital credentials
+          if (result.userId && result.email) {
+            toast({
+              title: "✅ Hospital Approved & Account Created",
+              description: `Email: ${result.email}\nHospital staff can login with their registered credentials.`,
+              variant: "default",
+            });
+          } else {
+            console.warn("Hospital account creation partial:", result);
+            approvalSuccessful = false;
+          }
         } catch (e) {
           console.error("Failed to create hospital from application", e);
           toast({
-            title: "Warning",
-            description: "Application approved but hospital record creation failed. Please create manually.",
+            title: "❌ Approval Failed",
+            description: "Hospital record creation failed. Please create manually.",
             variant: "destructive",
           });
+          approvalSuccessful = false;
         }
       }
 
@@ -284,20 +314,23 @@ export default function AdminHospitalsPending() {
         console.warn("audit insert failed (ignored)", e);
       }
 
-      toast({
-        title:
-          reviewAction === "approve"
-            ? "Hospital Approved"
-            : reviewAction === "reject"
-            ? "Hospital Rejected"
-            : "Requested More Info",
-        description:
-          reviewAction === "approve"
-            ? `${selectedHospital.hospital_name || selectedHospital.name} has been approved and registered.`
-            : reviewAction === "reject"
-            ? `${selectedHospital.hospital_name || selectedHospital.name} was rejected.`
-            : "Hospital asked to submit additional information.",
-      });
+      // Only show success message for non-approval actions, or if approval succeeded
+      if (reviewAction !== "approve" || approvalSuccessful) {
+        toast({
+          title:
+            reviewAction === "approve"
+              ? "Hospital Approved"
+              : reviewAction === "reject"
+              ? "Hospital Rejected"
+              : "Requested More Info",
+          description:
+            reviewAction === "approve"
+              ? `${selectedHospital.hospital_name || selectedHospital.name} has been approved and registered.`
+              : reviewAction === "reject"
+              ? `${selectedHospital.hospital_name || selectedHospital.name} was rejected.`
+              : "Hospital asked to submit additional information.",
+        });
+      }
 
       // refresh
       setShowReviewModal(false);
@@ -387,6 +420,17 @@ export default function AdminHospitalsPending() {
                           <SelectItem value="all">All</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="flex items-end">
+                      <Button
+                        onClick={() => loadHospitals()}
+                        variant="outline"
+                        size="sm"
+                        disabled={loading}
+                      >
+                        {loading ? "🔄 Refreshing..." : "🔄 Refresh"}
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
