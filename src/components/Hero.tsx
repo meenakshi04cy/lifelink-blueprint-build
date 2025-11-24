@@ -42,10 +42,10 @@ export const Hero = () => {
                 Request Blood
               </Button>
             </Link>
-            <Link to="/become-donor">
+            <Link to="/nearby-requests">
               <Button variant="outline" size="lg" className="text-lg">
                 <Heart className="w-5 h-5" />
-                Become a Donor
+                Nearby Requests
               </Button>
             </Link>
           </div>

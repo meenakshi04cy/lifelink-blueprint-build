@@ -7,28 +7,39 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Calendar, Eye, MapPin, History, ArrowLeft, Phone, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertCircle, Calendar, Eye, MapPin, History, ArrowLeft, Phone, Check, Upload } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import EntityMap from "@/components/EntityMap";
-import { geocodeAddress } from "@/lib/geocoding";
+import { getAvailableHospitals } from "@/lib/supabase-hospitals";
+
+interface Hospital {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  official_phone: string;
+  latitude?: number;
+  longitude?: number;
+}
 
 const RequestBlood = () => {
   const [bloodType, setBloodType] = useState("");
   const [urgency, setUrgency] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [selectedHospitalId, setSelectedHospitalId] = useState("");
+  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   const [hospitalLat, setHospitalLat] = useState<number | null>(null);
   const [hospitalLng, setHospitalLng] = useState<number | null>(null);
-  const [hospitalName, setHospitalName] = useState("");
-  const [hospitalAddress, setHospitalAddress] = useState("");
-  const [hospitalAddressInput, setHospitalAddressInput] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [visibility, setVisibility] = useState("public");
+  const [consentShare, setConsentShare] = useState(false);
+  const [consentDonorContact, setConsentDonorContact] = useState(false);
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -45,6 +56,36 @@ const RequestBlood = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch available hospitals
+  useEffect(() => {
+    const loadHospitals = async () => {
+      try {
+        const data = await getAvailableHospitals();
+        setHospitals(data);
+      } catch (error) {
+        console.error("Error loading hospitals:", error);
+        toast({
+          title: "Error loading hospitals",
+          description: "Please refresh the page",
+          variant: "destructive",
+        });
+      }
+    };
+    loadHospitals();
+  }, [toast]);
+
+  // When hospital is selected, set coordinates
+  useEffect(() => {
+    if (selectedHospitalId) {
+      const hospital = hospitals.find(h => h.id === selectedHospitalId);
+      if (hospital) {
+        setSelectedHospital(hospital);
+        setHospitalLat(hospital.latitude || null);
+        setHospitalLng(hospital.longitude || null);
+      }
+    }
+  }, [selectedHospitalId, hospitals]);
+
   const validatePhoneNumber = (phone: string): boolean => {
     if (!phone.trim()) return false;
     const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
@@ -52,34 +93,13 @@ const RequestBlood = () => {
   };
 
   const handlePhoneChange = (value: string) => {
-    setContactPhone(value);
+    setRecipientPhone(value);
     if (value.trim() && !validatePhoneNumber(value)) {
       setPhoneError("Please enter a valid phone number (e.g., +1 (555) 123-4567 or 9876543210)");
     } else {
       setPhoneError("");
     }
   };
-
-
-  // Geocode hospital address when all details are filled
-  useEffect(() => {
-    const geocodeHospital = async () => {
-      if (hospitalAddressInput && city && state && zip && hospitalName) {
-        try {
-          const result = await geocodeAddress(hospitalAddressInput, city, state, zip);
-          if (result) {
-            setHospitalLat(result.latitude);
-            setHospitalLng(result.longitude);
-            setHospitalAddress(result.formattedAddress || hospitalAddressInput);
-          }
-        } catch (error) {
-          console.error("Geocoding error:", error);
-        }
-      }
-    };
-
-    geocodeHospital();
-  }, [hospitalName, hospitalAddressInput, city, state, zip]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,18 +114,26 @@ const RequestBlood = () => {
       return;
     }
 
-    // Validate hospital contact phone
-    if (!contactPhone.trim()) {
-      setPhoneError("Hospital contact phone number is required");
+    if (!selectedHospitalId) {
       toast({
-        title: "Validation Error",
-        description: "Please provide a hospital contact phone number",
+        title: "Hospital required",
+        description: "Please select a hospital.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!validatePhoneNumber(contactPhone)) {
+    if (!recipientPhone.trim()) {
+      setPhoneError("Contact phone number is required");
+      toast({
+        title: "Validation Error",
+        description: "Please provide a contact phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validatePhoneNumber(recipientPhone)) {
       setPhoneError("Please enter a valid phone number");
       toast({
         title: "Invalid Phone Number",
@@ -122,37 +150,41 @@ const RequestBlood = () => {
 
       const basePayload: any = {
         user_id: user.id,
+        recipient_name: recipientName || formData.get("contactPerson"),
+        recipient_phone: recipientPhone,
         patient_name: formData.get("patientName") as string,
         blood_type: bloodType,
         units_needed: parseInt(formData.get("units") as string),
-        hospital_name: hospitalName,
-        hospital_address: `${hospitalAddressInput}, ${city}, ${state} ${zip}`,
-        contact_number: contactPhone,
+        hospital_id: selectedHospitalId,
+        hospital_name: selectedHospital?.name,
+        hospital_address: selectedHospital?.address,
+        contact_number: selectedHospital?.official_phone,
         urgency_level: urgency,
         required_by: formData.get("requiredBy") as string,
         medical_reason: formData.get("reason") as string || null,
+        request_visibility: visibility,
+        hospital_preference: "preferred",
+        consent_share_contact: consentShare,
+        consent_donor_contact_hospital: consentDonorContact,
       };
 
-      // include coordinates if we have them locally
+      // Add hospital coordinates if available
       if (hospitalLat !== null && hospitalLng !== null) {
         basePayload.hospital_latitude = hospitalLat;
         basePayload.hospital_longitude = hospitalLng;
       }
 
-      // First attempt: try inserting with coordinates (if present)
+      // Insert blood request
       let insertResult = await supabase.from("blood_requests").insert(basePayload);
 
-      // If DB complains about unknown columns (migration not applied), retry without lat/lng
       if (insertResult.error) {
         const msg = (insertResult.error.message || "").toLowerCase();
-        const shouldRetryWithoutCoords = msg.includes("hospital_latitude") || msg.includes("hospital_longitude") || msg.includes("column") && msg.includes("not found");
+        const shouldRetry = msg.includes("column") && msg.includes("not found");
 
-        if (shouldRetryWithoutCoords && (basePayload.hospital_latitude || basePayload.hospital_longitude)) {
-          // remove the coords and retry
+        if (shouldRetry) {
           const payloadNoCoords = { ...basePayload };
           delete payloadNoCoords.hospital_latitude;
           delete payloadNoCoords.hospital_longitude;
-
           insertResult = await supabase.from("blood_requests").insert(payloadNoCoords);
         }
       }
@@ -161,10 +193,10 @@ const RequestBlood = () => {
 
       toast({
         title: "Request submitted!",
-        description: "Your blood request has been submitted successfully.",
+        description: "Your blood request has been submitted successfully. Donors will see it soon.",
       });
 
-      navigate("/");
+      navigate("/request-history");
     } catch (error: any) {
       toast({
         title: "Request failed",
@@ -282,97 +314,125 @@ const RequestBlood = () => {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">Hospital Information</h3>
-                  
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <Phone className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
-                      Please provide an accurate hospital contact phone number. Donors will use this to reach the hospital about the blood request.
-                    </AlertDescription>
-                  </Alert>
+                <div className="space-y-4 border-b pb-6">
+                  <h3 className="font-semibold text-lg">Hospital Selection</h3>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="hospital">Hospital Name</Label>
+                    <Label htmlFor="hospital">Select Hospital *</Label>
+                    <Select value={selectedHospitalId} onValueChange={setSelectedHospitalId} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a hospital" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hospitals.map((hospital) => (
+                          <SelectItem key={hospital.id} value={hospital.id}>
+                            {hospital.name} - {hospital.city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Donors are encouraged to donate at this hospital. They can choose an alternate partner hospital if needed.
+                    </p>
+                  </div>
+
+                  {selectedHospital && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Hospital Address</p>
+                        <p className="font-semibold">{selectedHospital.address}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Contact Phone</p>
+                        <p className="font-semibold">{selectedHospital.official_phone}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 border-b pb-6">
+                  <h3 className="font-semibold text-lg">Request Visibility & Consent</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="visibility">Request Visibility</Label>
+                    <Select value={visibility} onValueChange={setVisibility}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">Public - Visible to all donors</SelectItem>
+                        <SelectItem value="nearby_only">Nearby Donors Only - Close donors only</SelectItem>
+                        <SelectItem value="private">Private - Hospital staff only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="consentShare"
+                        checked={consentShare}
+                        onCheckedChange={(checked) => setConsentShare(checked as boolean)}
+                      />
+                      <Label htmlFor="consentShare" className="text-sm font-normal cursor-pointer">
+                        Allow donors to contact me directly
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="consentDonor"
+                        checked={consentDonorContact}
+                        onCheckedChange={(checked) => setConsentDonorContact(checked as boolean)}
+                      />
+                      <Label htmlFor="consentDonor" className="text-sm font-normal cursor-pointer">
+                        I understand donors may contact the hospital to arrange donation
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-b pb-6">
+                  <h3 className="font-semibold text-lg">Recipient Contact Information</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientName">Recipient Name (or Anonymous ID)</Label>
                     <Input 
-                      id="hospital" 
-                      name="hospital" 
-                      required 
-                      value={hospitalName}
-                      onChange={(e) => setHospitalName(e.target.value)}
+                      id="recipientName" 
+                      name="recipientName"
+                      placeholder="Name or Anon123"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="hospitalAddress">Hospital Address</Label>
-                    <Input 
-                      id="hospitalAddress" 
-                      name="hospitalAddress" 
-                      required 
-                      value={hospitalAddressInput}
-                      onChange={(e) => setHospitalAddressInput(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input 
-                        id="city" 
-                        name="city" 
-                        required 
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State</Label>
-                      <Input 
-                        id="state" 
-                        name="state" 
-                        required 
-                        value={state}
-                        onChange={(e) => setState(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zip">ZIP Code</Label>
-                      <Input 
-                        id="zip" 
-                        name="zip" 
-                        required 
-                        value={zip}
-                        onChange={(e) => setZip(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="contactPhone" className="flex items-center gap-2">
+                    <Label htmlFor="recipientPhone" className="flex items-center gap-2">
                       <Phone className="w-4 h-4 text-primary" />
-                      <span>Hospital Contact Phone *</span>
-                      {contactPhone && validatePhoneNumber(contactPhone) && (
+                      <span>Contact Phone *</span>
+                      {recipientPhone && validatePhoneNumber(recipientPhone) && (
                         <Check className="w-4 h-4 text-green-600" />
                       )}
                     </Label>
                     <Input 
-                      id="contactPhone" 
-                      name="contactPhone" 
+                      id="recipientPhone" 
+                      name="recipientPhone" 
                       type="tel" 
                       required 
-                      placeholder="e.g., +1 (555) 123-4567 or 9876543210"
-                      value={contactPhone}
+                      placeholder="e.g., +91 9876543210"
+                      value={recipientPhone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       className={phoneError ? "border-red-500" : ""}
                     />
                     {phoneError && (
                       <p className="text-sm text-red-600">{phoneError}</p>
                     )}
-                    <p className="text-xs text-muted-foreground">
-                      Donors will use this number to contact the hospital about the blood request
-                    </p>
                   </div>
+                </div>
 
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Additional Information</h3>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="reason">Reason for Transfusion (Optional)</Label>
                     <Textarea
@@ -383,22 +443,7 @@ const RequestBlood = () => {
                     />
                   </div>
 
-                  {/* Hospital Location Map Section */}
-                  {(hospitalLat && hospitalLng) && (
-                    <div className="mt-6 pt-6 border-t space-y-4">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-primary" />
-                        Hospital Location Map
-                      </h3>
-                      <EntityMap
-                        latitude={hospitalLat}
-                        longitude={hospitalLng}
-                        hospitalName={hospitalName}
-                        address={hospitalAddress}
-                        height="h-80"
-                      />
-                    </div>
-                  )}
+                  {/* Hospital Location Map Section - Removed */}
                 </div>
 
                 <Button type="submit" className="w-full" variant="hero" size="lg" disabled={loading}>
@@ -432,30 +477,6 @@ const RequestBlood = () => {
                     <h3 className="text-lg font-semibold text-black mb-2">Stay Visible</h3>
                     <p className="text-sm text-gray-500">
                        Control who can see and respond to your blood requests
-                    </p>
-                  </div>
-                </Link>
-
-                <Link to="/nearby-donations" className="block">
-                  <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transform hover:-translate-y-1 transition-all p-6 h-full">
-                    <div className="w-12 h-12 rounded-md bg-red-50 flex items-center justify-center mb-4">
-                      <MapPin className="w-6 h-6 text-red-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-black mb-2">View Nearby Donations</h3>
-                    <p className="text-sm text-gray-500">
-                      Find and connect with available blood donors near your location
-                    </p>
-                  </div>
-                </Link>
-
-                <Link to="/request-history" className="block">
-                  <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transform hover:-translate-y-1 transition-all p-6 h-full">
-                    <div className="w-12 h-12 rounded-md bg-red-50 flex items-center justify-center mb-4">
-                      <History className="w-6 h-6 text-red-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-black mb-2">Track Request History</h3>
-                    <p className="text-sm text-gray-500">
-                      Keep a record of all your requests and their outcomes
                     </p>
                   </div>
                 </Link>

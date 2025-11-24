@@ -69,7 +69,7 @@ export const Header = () => {
             {isAdmin && (
               <>
                 <Link to="/admin/hospitals/pending" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
-                  <span>🔐</span> Admin
+                  <span></span> Admin
                 </Link>
 
               </>
@@ -126,7 +126,14 @@ export const Header = () => {
                   className="text-foreground hover:text-primary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  🔐 Admin Dashboard
+                   Admin Dashboard
+                </Link>
+                <Link
+                  to="/test-hospital-insert"
+                  className="text-foreground hover:text-primary transition-colors text-xs"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  🧪 Test Hospital
                 </Link>
               </>
             )}

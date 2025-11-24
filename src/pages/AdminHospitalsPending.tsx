@@ -88,7 +88,7 @@ export default function AdminHospitalsPending() {
           
           console.log("👤 User email:", data.user.email);
           console.log("📝 User metadata:", userMetadata);
-          console.log("🔐 Is admin:", isAdminUser);
+          console.log("Is admin:", isAdminUser);
           
           if (isAdminUser) {
             setIsAdmin(true);

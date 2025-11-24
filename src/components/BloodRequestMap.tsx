@@ -44,28 +44,49 @@ const BloodRequestMap = ({
       }).addTo(mapRef.current);
     }
 
-    // Update map center to user location
-    mapRef.current.setView([userLocation.latitude, userLocation.longitude]);
-
     // Clear existing markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
-    // Add user location marker (blue)
-    const userMarker = L.circleMarker(
+    // Create a feature group to hold all markers for bounds calculation
+    const featureGroup = L.featureGroup();
+
+    // Add user location marker (highlighted - larger blue circle with "YOU")
+    const userMarker = L.divIcon({
+      html: `
+        <div style="
+          background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+          color: white;
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(30, 64, 175, 0.5);
+          font-weight: bold;
+          font-size: 12px;
+          text-align: center;
+          line-height: 1.2;
+        ">
+          YOU
+        </div>
+      `,
+      iconSize: [50, 50],
+      iconAnchor: [25, 25],
+      popupAnchor: [0, -25],
+      className: "user-marker",
+    });
+
+    const userMarkerInstance = L.marker(
       [userLocation.latitude, userLocation.longitude],
-      {
-        radius: 8,
-        fillColor: "#3b82f6",
-        color: "#fff",
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8,
-      }
+      { icon: userMarker }
     ).addTo(mapRef.current);
 
-    userMarker.bindPopup("📍 Your Location");
-    markersRef.current.push(userMarker);
+    userMarkerInstance.bindPopup("📍 Your Location");
+    markersRef.current.push(userMarkerInstance);
+    featureGroup.addLayer(userMarkerInstance);
 
     // Add radius circle
     L.circle([userLocation.latitude, userLocation.longitude], {
@@ -79,34 +100,58 @@ const BloodRequestMap = ({
       dashArray: "5, 5",
     }).addTo(mapRef.current);
 
-    // Add hospital markers (red) - only if they have valid coordinates
+    // Add hospital markers (blue dots) - blood request locations
     hospitals.forEach((hospital) => {
       if (hospital.lat && hospital.lng) {
         const popupContent = `
-          <div class="text-sm">
-            <p class="font-semibold">${hospital.name}</p>
-            <p class="text-xs"><strong>Blood:</strong> ${hospital.bloodType}</p>
-            <p class="text-xs"><strong>Urgency:</strong> ${hospital.urgency}</p>
+          <div class="text-sm p-2">
+            <p class="font-semibold mb-1">${hospital.name}</p>
+            <p class="text-xs"><strong>Patient Blood:</strong> ${hospital.bloodType}</p>
+            <p class="text-xs"><strong>Urgency:</strong> <span style="color: ${
+              hospital.urgency === "critical"
+                ? "#dc2626"
+                : hospital.urgency === "urgent"
+                ? "#ea580c"
+                : "#16a34a"
+            }; font-weight: bold;">${hospital.urgency}</span></p>
             <p class="text-xs"><strong>Units:</strong> ${hospital.units}</p>
-            ${hospital.distance ? `<p class="text-xs text-blue-600"><strong>Distance:</strong> ${hospital.distance.toFixed(1)} km</p>` : ""}
+            ${
+              hospital.distance
+                ? `<p class="text-xs text-blue-600 mt-1"><strong>Distance:</strong> ${hospital.distance.toFixed(1)} km</p>`
+                : ""
+            }
           </div>
         `;
 
-        const marker = L.marker([hospital.lat, hospital.lng], {
-          icon: L.icon({
-            iconUrl:
-              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMiIgZmlsbD0iI2VmNDQ0NCIvPjx0ZXh0IHg9IjEyIiB5PSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIj5IPC90ZXh0Pjwvc3ZnPg==",
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-            popupAnchor: [0, -32],
-          }),
+        // Create blue circle marker for blood requests
+        const marker = L.circleMarker([hospital.lat, hospital.lng], {
+          radius: 12,
+          fillColor: "#3b82f6",
+          color: "#1e40af",
+          weight: 2,
+          opacity: 0.8,
+          fillOpacity: 0.7,
         })
           .addTo(mapRef.current!)
           .bindPopup(popupContent);
 
+        // Add click handler to open request details
+        marker.on("click", () => {
+          hospital.onClick();
+        });
+
         markersRef.current.push(marker);
+        featureGroup.addLayer(marker);
       }
     });
+
+    // Auto-fit map to show all markers with padding
+    if (featureGroup.getLayers().length > 1) {
+      mapRef.current.fitBounds(featureGroup.getBounds(), { padding: [50, 50] });
+    } else if (featureGroup.getLayers().length === 1) {
+      // Just user location, zoom to default level
+      mapRef.current.setView([userLocation.latitude, userLocation.longitude], 12);
+    }
   }, [userLocation, hospitals, radius]);
 
   if (!userLocation) {

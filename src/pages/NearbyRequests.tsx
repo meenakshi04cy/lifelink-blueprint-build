@@ -3,17 +3,25 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MapPin, Clock, Droplet, AlertCircle, Phone, X, Navigation, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MapPin, Clock, Droplet, AlertCircle, Phone, X, Navigation, ArrowLeft, Heart, Building2, Zap, Map } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import EntityMap from "@/components/EntityMap";
+import { useToast } from "@/hooks/use-toast";
+import { createDonationConnection, createDonationCommitment, getPartnerHospitals } from "@/lib/supabase-hospitals";
 import { useNavigate } from "react-router-dom";
+import { calculateDistance, formatDistance } from "@/lib/distance";
+import BloodRequestMap from "@/components/BloodRequestMap";
 
 interface BloodRequest {
   id: string;
   patient_name: string;
   hospital_name: string;
+  hospital_id?: string;
   hospital_address?: string;
   hospital_latitude?: number;
   hospital_longitude?: number;
@@ -26,6 +34,18 @@ interface BloodRequest {
   contact_number?: string;
   contact_email?: string;
   notes?: string;
+  request_visibility?: string;
+  distance?: number;
+}
+
+interface Hospital {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  official_phone: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 const NearbyRequests = () => {
@@ -34,7 +54,66 @@ const NearbyRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState<BloodRequest | null>(null);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [donatingRequestId, setDonatingRequestId] = useState<string | null>(null);
+  const [processingDonation, setProcessingDonation] = useState(false);
+  const [userLatitude, setUserLatitude] = useState<number | null>(null);
+  const [userLongitude, setUserLongitude] = useState<number | null>(null);
+  const [showMapView, setShowMapView] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const fetchUserLocation = async () => {
+      try {
+        // Try to get user's saved location from profile
+        if (user) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("latitude, longitude")
+            .eq("id", user.id)
+            .single();
+
+          if (data && data.latitude && data.longitude) {
+            console.log("User location from profile:", data.latitude, data.longitude);
+            setUserLatitude(data.latitude);
+            setUserLongitude(data.longitude);
+            return;
+          }
+        }
+
+        // Fallback to geolocation API
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              console.log("User location from geolocation API:", position.coords.latitude, position.coords.longitude);
+              setUserLatitude(position.coords.latitude);
+              setUserLongitude(position.coords.longitude);
+            },
+            (error) => {
+              console.log("Geolocation error:", error);
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching user location:", error);
+      }
+    };
+
+    fetchUserLocation();
+  }, [user]);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -44,14 +123,151 @@ const NearbyRequests = () => {
         .eq("status", "active")
         .order("created_at", { ascending: false });
 
+      if (error) {
+        console.error("Error fetching requests:", error);
+        setLoading(false);
+        return;
+      }
+
       if (data) {
-        setRequests(data);
+        console.log("Total requests fetched:", data.length);
+        console.log("Sample request with location data:", {
+          patient_name: data[0]?.patient_name,
+          hospital_latitude: data[0]?.hospital_latitude,
+          hospital_longitude: data[0]?.hospital_longitude,
+          hospital_name: data[0]?.hospital_name
+        });
+
+        // Calculate distances if user location is available
+        const requestsWithDistance = data.map((request) => {
+          const hasUserLocation = userLatitude && userLongitude;
+          const hasHospitalLocation = request.hospital_latitude && request.hospital_longitude;
+          
+          if (hasUserLocation && hasHospitalLocation) {
+            const distance = calculateDistance(
+              userLatitude,
+              userLongitude,
+              request.hospital_latitude,
+              request.hospital_longitude
+            );
+            console.log(`Distance for ${request.patient_name}: ${distance.toFixed(2)} km`);
+            return { ...request, distance };
+          }
+          
+          if (!hasUserLocation) {
+            console.warn("User location not available");
+          }
+          if (!hasHospitalLocation) {
+            console.warn(`Hospital location missing for ${request.patient_name}`);
+          }
+          
+          return request;
+        });
+
+        // Sort by distance (closest first)
+        const sortedRequests = requestsWithDistance.sort((a, b) => {
+          // If both have distances, sort by distance ascending (closest first)
+          if (a.distance !== undefined && b.distance !== undefined) {
+            return a.distance - b.distance;
+          }
+          // If only one has distance, put it first
+          if (a.distance !== undefined) return -1;
+          if (b.distance !== undefined) return 1;
+          // Otherwise, maintain original order
+          return 0;
+        });
+
+        console.log("Final sorted requests:", sortedRequests.map(r => ({ 
+          patient_name: r.patient_name, 
+          distance: r.distance 
+        })));
+
+        setRequests(sortedRequests);
       }
       setLoading(false);
     };
 
     fetchRequests();
-  }, []);
+  }, [userLatitude, userLongitude]);
+
+  const handleDonateBlood = async (request: BloodRequest) => {
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to donate blood.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    setSelectedRequest(request);
+    setProcessingDonation(true);
+    setDonatingRequestId(request.id);
+
+    try {
+      // Get or create donor profile
+      let donor;
+      const { data: existingDonor, error: donorError } = await supabase
+        .from("donors")
+        .select("id, user_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (existingDonor) {
+        donor = existingDonor;
+      } else {
+        // Create a new donor profile if it doesn't exist
+        const { data: newDonor, error: createError } = await supabase
+          .from("donors")
+          .insert([{ 
+            user_id: user.id,
+            blood_type: "O+",  // Default value, can be updated in profile
+            age: 18,           // Default minimum age, can be updated in profile
+            weight: 60         // Default value in kg, can be updated in profile
+          }])
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Donor creation error:", createError);
+          throw new Error(`Failed to create donor profile: ${createError.message}`);
+        }
+        
+        if (!newDonor) {
+          throw new Error("Failed to create donor profile: No data returned");
+        }
+        donor = newDonor;
+      }
+
+      // Directly create donation commitment to the requested hospital
+      const commitment = await createDonationCommitment(
+        donor.id,
+        request.id,
+        request.hospital_id || "",
+        request.hospital_id || "",
+        false,
+        ""
+      );
+
+      toast({
+        title: "Donation registered!",
+        description: `You've committed to donate at ${request.hospital_name}.`,
+      });
+    } catch (error: any) {
+      console.error("Full donation error:", error);
+      toast({
+        title: "Error registering donation",
+        description: error.message || "Failed to register your donation.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingDonation(false);
+      setDonatingRequestId(null);
+    }
+  };
+
+
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
@@ -97,16 +313,84 @@ const NearbyRequests = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6">
+            <div className="space-y-6">
+              {/* View Toggle */}
+              <div className="flex gap-2 justify-center">
+                <Button
+                  onClick={() => setShowMapView(false)}
+                  variant={!showMapView ? "default" : "outline"}
+                  className="gap-2"
+                >
+                  List View
+                </Button>
+                <Button
+                  onClick={() => setShowMapView(true)}
+                  variant={showMapView ? "default" : "outline"}
+                  className="gap-2"
+                >
+                  <Map className="w-4 h-4" />
+                  Map View
+                </Button>
+              </div>
+
+              {/* Map View */}
+              {showMapView && userLatitude && userLongitude ? (
+                <div>
+                  {(() => {
+                    const filteredRequests = requests.filter(r => r.hospital_latitude && r.hospital_longitude);
+                    console.log("Requests with coordinates:", filteredRequests.length);
+                    console.log("Sample filtered request:", filteredRequests[0]);
+                    
+                    return (
+                      <BloodRequestMap
+                        userLocation={{ latitude: userLatitude, longitude: userLongitude }}
+                        hospitals={filteredRequests.map((request) => ({
+                          lat: request.hospital_latitude!,
+                          lng: request.hospital_longitude!,
+                          name: request.hospital_name,
+                          type: "hospital" as const,
+                          bloodType: request.blood_type,
+                          urgency: request.urgency_level,
+                          distance: request.distance || 0,
+                          units: request.units_needed,
+                          onClick: () => {
+                            setSelectedRequest(request);
+                            setShowDetailsDialog(true);
+                          },
+                        }))}
+                        radius={50}
+                      />
+                    );
+                  })()}
+                </div>
+              ) : showMapView ? (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    Location not available. Please enable location permissions.
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {/* List View */}
+              {!showMapView && (
+              <div className="grid gap-6">
               {requests.map((request) => (
                 <Card key={request.id} className="border-primary/20">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <CardTitle className="text-xl">Patient: {request.patient_name}</CardTitle>
-                        <CardDescription className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          {request.hospital_name}
+                        <CardDescription className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4" />
+                            {request.hospital_name}
+                          </div>
+                          {request.distance && (
+                            <div className="flex items-center gap-2 text-sm text-primary font-medium">
+                              <Zap className="w-4 h-4" />
+                              {formatDistance(request.distance)} away
+                            </div>
+                          )}
                         </CardDescription>
                       </div>
                       <Badge variant={getUrgencyColor(request.urgency_level)}>
@@ -139,6 +423,14 @@ const NearbyRequests = () => {
                       </div>
                     </div>
                     <div className="flex gap-3">
+                      <Button 
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => handleDonateBlood(request)}
+                        disabled={processingDonation && donatingRequestId === request.id}
+                      >
+                        <Heart className="w-4 h-4 mr-2" />
+                        {processingDonation && donatingRequestId === request.id ? "Registering..." : "Donate Blood"}
+                      </Button>
                       <Button 
                         className="flex-1" 
                         variant="hero"
@@ -176,6 +468,8 @@ const NearbyRequests = () => {
                     </p>
                   </CardContent>
                 </Card>
+              )}
+              </div>
               )}
             </div>
           )}
@@ -257,23 +551,7 @@ const NearbyRequests = () => {
           </DialogHeader>
           {selectedRequest && (
             <div className="space-y-6">
-              {/* Hospital Map Section */}
-              {selectedRequest.hospital_latitude && selectedRequest.hospital_longitude && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-primary" />
-                    Hospital Location
-                  </h3>
-                  <EntityMap
-                    latitude={selectedRequest.hospital_latitude}
-                    longitude={selectedRequest.hospital_longitude}
-                    hospitalName={selectedRequest.hospital_name}
-                    address={selectedRequest.hospital_address || ""}
-                    height="h-64"
-                  />
-                </div>
-              )}
-
+              {/* Hospital Map Section - Removed */}
 
               <div className="space-y-3">
                 <h3 className="font-semibold text-lg">Request Information</h3>
@@ -363,6 +641,7 @@ const NearbyRequests = () => {
           )}
         </DialogContent>
       </Dialog>
+
       <Footer />
     </div>
   );

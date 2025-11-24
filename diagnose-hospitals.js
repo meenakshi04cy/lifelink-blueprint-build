@@ -75,7 +75,7 @@ async function diagnose() {
       console.log(`   ✅ Authenticated as: ${user.user.email}`);
       console.log(`   📝 User metadata:`, user.user.user_metadata);
       const isAdmin = user.user.user_metadata?.user_type === "admin";
-      console.log(`   🔐 Is admin: ${isAdmin ? "✅ Yes" : "❌ No"}`);
+      console.log(`    Is admin: ${isAdmin ? "✅ Yes" : "❌ No"}`);
     }
 
     // 4. Summary

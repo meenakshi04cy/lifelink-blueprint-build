@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
-import { Heart } from "lucide-react";
-import { useState } from "react";
+import { Heart, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,8 +21,28 @@ const Signup = () => {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Get user's geolocation on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLatitude(position.coords.latitude);
+          setLongitude(position.coords.longitude);
+          setLocationError(null);
+        },
+        (error) => {
+          console.log("Geolocation error:", error);
+          setLocationError("Location access denied. You can still sign up, but won't see nearby requests sorted by distance.");
+        }
+      );
+    }
+  }, []);
 
   const calculatePasswordStrength = (pwd: string) => {
     let strength = 0;
@@ -56,27 +76,36 @@ const Signup = () => {
     if (!validateForm()) return;
     setLoading(true);
 
-    // Corrected the template literal usage:
-    // 1. `full_name`: Use string concatenation or a template literal for the value.
-    // 2. `emailRedirectTo`: Use a template literal to construct the URL string.
     const fullName = `${firstName} ${lastName}`.trim();
     const redirectUrl = `${window.location.origin}/get-started`;
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: fullName, // Use the constructed variable
+            full_name: fullName,
             phone,
             user_type: "general",
           },
-          emailRedirectTo: redirectUrl, // Use the constructed variable
+          emailRedirectTo: redirectUrl,
         },
       });
 
       if (error) throw error;
+
+      // Save user location to profile if available
+      if (data.user && latitude && longitude) {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          email: email,
+          full_name: fullName,
+          phone: phone,
+          latitude: latitude,
+          longitude: longitude,
+        });
+      }
 
       toast({
         title: "Welcome to LifeLink! 🎉",
@@ -153,6 +182,28 @@ const Signup = () => {
                     <span className="text-xs">You can donate blood or request blood after signup</span>
                   </p>
                 </div>
+
+                {/* Location Status */}
+                {locationError && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-yellow-900">Location Access</p>
+                      <p className="text-xs text-yellow-800 mt-1">{locationError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {latitude && longitude && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-900">✓ Location Detected</p>
+                      <p className="text-xs text-green-800 mt-1">Your location will help us show nearby blood requests sorted by distance.</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Name Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">

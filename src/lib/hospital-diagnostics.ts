@@ -5,7 +5,7 @@ export async function testHospitalInsert() {
   const sb = supabase as any;
   
   console.log("\n🧪 === HOSPITAL INSERT TEST ===");
-  console.log("🔐 Auth status check...");
+  console.log(" Auth status check...");
   
   try {
     const { data: { user }, error: authError } = await sb.auth.getUser();

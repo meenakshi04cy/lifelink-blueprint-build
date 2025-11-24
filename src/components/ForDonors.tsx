@@ -44,7 +44,7 @@ export const ForDonors = () => {
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">Be a Hero. Donate Blood.</h2>
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              Register as a donor and get notified when your blood type is needed. 
+              Browse nearby blood requests and donate directly to recipients in need. 
               Every donation makes a difference in someone's life.
             </p>
 
@@ -70,9 +70,9 @@ export const ForDonors = () => {
               </ul>
             </div>
 
-            <Link to="/become-donor">
+            <Link to="/nearby-requests">
               <Button variant="hero" size="lg">
-                Register as Donor
+                View Nearby Blood Requests
               </Button>
             </Link>
           </div>

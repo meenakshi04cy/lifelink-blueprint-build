@@ -8,17 +8,11 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import GetStarted from "./pages/GetStarted";
 import HospitalPending from "./pages/HospitalPending";
-import BecomeDonor from "./pages/BecomeDonor";
 import RequestBlood from "./pages/RequestBlood";
 import About from "./pages/About";
-import UpdateAvailability from "./pages/UpdateAvailability";
-import DonorVisibility from "./pages/DonorVisibility";
 import NearbyRequests from "./pages/NearbyRequests";
-import DonationHistory from "./pages/DonationHistory";
 import UpdateRequestStatus from "./pages/UpdateRequestStatus";
 import RequestorVisibility from "./pages/RequestorVisibility";
-import NearbyDonations from "./pages/NearbyDonations";
-import NearbyAvailableDonors from "./pages/NearbyAvailableDonors";
 import NearbyBloodRequests from "./pages/NearbyBloodRequests";
 import RequestHistory from "./pages/RequestHistory";
 import Profile from "./pages/Profile";
@@ -60,23 +54,15 @@ const App = () => (
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/hospital-pending" element={<HospitalPending />} />
           <Route path="/admin/hospitals/pending" element={<AdminHospitalsPending />} />
-          <Route path="/become-donor" element={<BecomeDonor />} />
           <Route path="/request-blood" element={<RequestBlood />} />
           <Route path="/about" element={<About />} />
-          <Route path="/update-availability" element={<UpdateAvailability />} />
-          <Route path="/donor-visibility" element={<DonorVisibility />} />
           <Route path="/nearby-requests" element={<NearbyRequests />} />
-          <Route path="/donation-history" element={<DonationHistory />} />
           <Route path="/update-request-status" element={<UpdateRequestStatus />} />
           <Route path="/requestor-visibility" element={<RequestorVisibility />} />
-          <Route path="/nearby-donations" element={<NearbyDonations />} />
-          <Route path="/nearby-available-donors" element={<NearbyAvailableDonors />} />
           <Route path="/nearby-blood-requests" element={<NearbyBloodRequests />} />
-
           <Route path="/request-history" element={<RequestHistory />} />
           <Route path="/profile" element={<Profile />} />
           
-
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

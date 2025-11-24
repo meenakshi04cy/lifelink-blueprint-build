@@ -9,8 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Edit2, Save, X, LogOut } from "lucide-react";
+import { ArrowLeft, Edit2, Save, X, LogOut, Heart, Award, Calendar, TrendingUp, History } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 const Profile = () => {
   const [user, setUser] = useState<any | null>(null);
@@ -34,6 +35,8 @@ const Profile = () => {
   
   // Validation state
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [donations, setDonations] = useState<any[]>([]);
+  const [requestHistory, setRequestHistory] = useState<any[]>([]);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -476,6 +479,206 @@ const Profile = () => {
                         </Button>
                       )}
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Donation History Card */}
+              <Card className="shadow-lg">
+                <CardHeader className="border-b">
+                  <CardTitle className="text-2xl">Your Donation History</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-6">
+                    {/* Stats Cards */}
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-0">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Heart className="w-5 h-5 text-primary" />
+                            Total Donations
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-4xl font-bold text-primary">{donations.length}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Saving lives one donation at a time
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-0">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Award className="w-5 h-5 text-primary" />
+                            Lives Impacted
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-4xl font-bold text-primary">{donations.length * 3}+</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Each donation can save up to 3 lives
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-0">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-primary" />
+                            Last Donation
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-4xl font-bold text-primary">-</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            days ago
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Donations Timeline */}
+                    {donations.length > 0 ? (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Donation Timeline</h3>
+                        {donations.map((donation, index) => (
+                          <div
+                            key={donation.id || index}
+                            className="flex items-start gap-4 p-4 border rounded-lg hover:border-primary/40 transition-all"
+                          >
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Heart className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <p className="font-semibold text-lg">{donation.hospital}</p>
+                                  <p className="text-sm text-muted-foreground">{donation.date}</p>
+                                </div>
+                                <Badge variant="secondary">{donation.status}</Badge>
+                              </div>
+                              <div className="flex gap-4 text-sm">
+                                <span className="text-muted-foreground">
+                                  Blood Type: <span className="font-semibold text-foreground">{donation.bloodType}</span>
+                                </span>
+                                <span className="text-muted-foreground">
+                                  Units: <span className="font-semibold text-foreground">{donation.units}</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Heart className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-muted-foreground">No donations yet. Start saving lives today!</p>
+                        <Button 
+                          className="mt-4 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => navigate("/nearby-requests")}
+                        >
+                          <Heart className="w-4 h-4 mr-2" />
+                          Donate Now
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Achievement Badges */}
+                    {donations.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Achievement Badges</h3>
+                        <div className="flex flex-wrap gap-4">
+                          {donations.length >= 1 && (
+                            <div className="flex items-center gap-2 p-3 border rounded-lg bg-primary/5">
+                              <Award className="w-6 h-6 text-primary" />
+                              <div>
+                                <p className="font-semibold text-sm">First Donation</p>
+                                <p className="text-xs text-muted-foreground">Completed</p>
+                              </div>
+                            </div>
+                          )}
+                          {donations.length >= 3 && (
+                            <div className="flex items-center gap-2 p-3 border rounded-lg bg-primary/5">
+                              <Award className="w-6 h-6 text-primary" />
+                              <div>
+                                <p className="font-semibold text-sm">3 Donations</p>
+                                <p className="text-xs text-muted-foreground">Reached</p>
+                              </div>
+                            </div>
+                          )}
+                          {donations.length >= 5 && (
+                            <div className="flex items-center gap-2 p-3 border rounded-lg bg-primary/5">
+                              <Award className="w-6 h-6 text-primary" />
+                              <div>
+                                <p className="font-semibold text-sm">5 Donations</p>
+                                <p className="text-xs text-muted-foreground">Achieved</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Request History Card */}
+              <Card className="shadow-lg">
+                <CardHeader className="border-b">
+                  <CardTitle className="text-2xl">Your Blood Request History</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-6">
+                    {requestHistory.length > 0 ? (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Request Timeline</h3>
+                        {requestHistory.map((request, index) => (
+                          <div
+                            key={request.id || index}
+                            className="flex items-start gap-4 p-4 border rounded-lg hover:border-primary/40 transition-all"
+                          >
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <History className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <p className="font-semibold text-lg">Patient: {request.patient_name}</p>
+                                  <p className="text-sm text-muted-foreground">{request.date}</p>
+                                </div>
+                                <Badge variant={request.status === 'completed' ? 'default' : 'secondary'}>
+                                  {request.status}
+                                </Badge>
+                              </div>
+                              <div className="flex gap-4 text-sm">
+                                <span className="text-muted-foreground">
+                                  Blood Type: <span className="font-semibold text-foreground">{request.blood_type}</span>
+                                </span>
+                                <span className="text-muted-foreground">
+                                  Units: <span className="font-semibold text-foreground">{request.units}</span>
+                                </span>
+                                <span className="text-muted-foreground">
+                                  Hospital: <span className="font-semibold text-foreground">{request.hospital}</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <History className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-muted-foreground">No blood requests yet. Start requesting blood now!</p>
+                        <Button 
+                          className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => navigate("/request-blood")}
+                        >
+                          <History className="w-4 h-4 mr-2" />
+                          Request Blood
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
